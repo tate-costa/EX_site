@@ -3,23 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Gymnastics Dashboard</title>
-  <!-- Firebase Modular SDK -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
-    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
-    import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
-
-    // 🔥 Firebase config
-    const firebaseConfig = {
-      apiKey: "AIzaSyD3cJtk0c42pNAr3tsi_gQ7_9KcQS-HvgA",
-      authDomain: "extracker-d2148.firebaseapp.com",
-      projectId: "extracker-d2148"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
-
+  <script>
     // 🧱 Event setup
     const events = [
       { name: "FX", skills: 8 },
@@ -30,21 +14,9 @@
       { name: "HB", skills: 8 }
     ];
 
-    // 🔐 Auth check
-    onAuthStateChanged(auth, user => {
-      if (user) {
-        window.currentUser = {
-          uid: user.uid,
-          email: user.email
-        };
-        buildDashboard();
-      } else {
-        window.location.href = "login.html";
-      }
-    });
-
     function buildDashboard() {
       const container = document.getElementById("dashboard");
+      const breakdown = document.getElementById("dataBreakdown");
 
       events.forEach(event => {
         const panel = document.createElement("div");
@@ -77,7 +49,7 @@
         const statusMsg = document.createElement("p");
         statusMsg.className = "submitStatus";
 
-        submitBtn.addEventListener("click", async () => {
+        submitBtn.addEventListener("click", () => {
           const rows = panel.querySelectorAll("tbody tr");
           const skills = [];
 
@@ -94,26 +66,12 @@
             return;
           }
 
-          if (!window.currentUser) {
-            statusMsg.textContent = "User not authenticated.";
-            return;
-          }
+          const timestamp = new Date().toLocaleString();
+          const row = document.createElement("tr");
+          row.innerHTML = `<td>${event.name}</td><td>${JSON.stringify(skills)}</td><td>${timestamp}</td>`;
+          breakdown.querySelector("tbody").appendChild(row);
 
-          try {
-            const timestamp = new Date().toISOString();
-            const docRef = doc(db, "submissions", `${window.currentUser.uid}_${timestamp}`);
-            await setDoc(docRef, {
-              uid: window.currentUser.uid,
-              email: window.currentUser.email,
-              event: event.name,
-              skills: skills,
-              submittedAt: timestamp
-            });
-            statusMsg.textContent = `✅ Submitted on ${new Date().toLocaleString()}`;
-          } catch (err) {
-            console.error("Submission error:", err);
-            statusMsg.textContent = "❌ Submission failed. Try again.";
-          }
+          statusMsg.textContent = `✅ Submitted on ${timestamp}`;
         });
 
         panel.appendChild(submitBtn);
@@ -121,6 +79,19 @@
         container.appendChild(panel);
       });
     }
+
+    function downloadData() {
+      const rows = Array.from(document.querySelectorAll("#dataBreakdown tbody tr"));
+      const csv = rows.map(row => Array.from(row.children).map(cell => `"${cell.textContent}"`).join(",")).join("
+");
+      const blob = new Blob([csv], { type: "text/csv" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "gymnastics_data.csv";
+      link.click();
+    }
+
+    window.onload = buildDashboard;
   </script>
 
   <style>
@@ -131,10 +102,20 @@
     table { width: 100%; border-collapse: collapse; margin-top: 10px; }
     th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
     input[type="text"], input[type="number"] { width: 90%; padding: 4px; }
+    #downloadBtn { margin-top: 20px; padding: 8px 16px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; }
   </style>
 </head>
 <body>
   <h1>Welcome to Your Gymnastics Dashboard</h1>
   <div id="dashboard"></div>
+
+  <h2>Data Breakdown</h2>
+  <table id="dataBreakdown">
+    <thead>
+      <tr><th>Event</th><th>Skills</th><th>Timestamp</th></tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+  <button id="downloadBtn" onclick="downloadData()">Download Data</button>
 </body>
 </html>
