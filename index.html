@@ -1,73 +1,50 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Welcome</title>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EX Tracker - Home</title>
+  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-auth-compat.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
-      text-align: center;
-      padding: 3rem;
-      background: #f0f4f8;
+      padding: 2rem;
+      background-color: #f4f4f4;
     }
-    h1 {
-      margin-bottom: 2rem;
-    }
-    .nav-buttons a {
-      display: inline-block;
-      margin: 1rem;
-      padding: 1rem 2rem;
-      background: #007bff;
-      color: white;
-      text-decoration: none;
-      border-radius: 6px;
-      font-size: 1.1rem;
-      transition: background 0.3s;
-    }
-    .nav-buttons a:hover {
-      background: #0056b3;
-    }
-    #redirect-message {
-      margin-top: 2rem;
-      font-size: 1rem;
-      color: green;
+    #welcomeUser {
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
     }
   </style>
 </head>
 <body>
-  <h1>Welcome to Your Execution Tracker</h1>
-  <p>Select an option to get started:</p>
-
-  <div class="nav-buttons">
-    <a href="signup.html">Create Account</a>
-    <a href="login.html">Login</a>
-    <a href="dashboard.html">Go to Dashboard</a>
-  </div>
-
-  <p id="redirect-message"></p>
-
-  <!-- 🔥 Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-auth.js"></script>
+  <h1 id="welcomeUser">Loading...</h1>
+  <p>This is your landing hub. From here, you can navigate to your dashboard, manage events, or explore new features.</p>
+  <nav>
+    <ul>
+      <li><a href="dashboard.html">Go to Dashboard</a></li>
+      <li><a href="signup.html">Sign Up / Log In</a></li>
+    </ul>
+  </nav>
 
   <script>
     const firebaseConfig = {
-      apiKey: "YOUR_API_KEY",
-      authDomain: "YOUR_PROJECT.firebaseapp.com",
-      projectId: "YOUR_PROJECT_ID",
-      // Add other config values as needed
+      apiKey: "AIzaSyD3cJtk0c42pNAr3tsi_gQ7_9KcQS-HvgA",
+      authDomain: "extracker-d2148.firebaseapp.com",
+      projectId: "extracker-d2148",
+      appId: "1:123456789012:web:abcdef123456" // Replace with your actual App ID
     };
+
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
 
-    // 🔁 Redirect if already logged in
-    auth.onAuthStateChanged(user => {
-      if (user && user.emailVerified) {
-        document.getElementById("redirect-message").textContent = "Redirecting to dashboard...";
-        setTimeout(() => {
-          window.location.href = "dashboard.html";
-        }, 1500);
+    auth.onAuthStateChanged((user) => {
+      const welcomeEl = document.getElementById("welcomeUser");
+      if (user) {
+        welcomeEl.textContent = `Welcome back, ${user.displayName || user.email}`;
+      } else {
+        welcomeEl.textContent = "Welcome, guest! Please sign in to access your dashboard.";
       }
     });
   </script>
