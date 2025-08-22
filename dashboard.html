@@ -3,47 +3,22 @@
 <head>
   <meta charset="UTF-8">
   <title>Gymnastics Dashboard</title>
-  <!-- Firebase UMD scripts -->
-  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
-  <style>
-    body { font-family: Arial; padding: 20px; background-color: #f9f9f9; }
-    .event-panel { margin-bottom: 30px; border: 1px solid #ccc; padding: 15px; border-radius: 6px; background: #fff; }
-    .submitBtn { margin-top: 10px; padding: 8px 16px; background-color: #0077cc; color: white; border: none; border-radius: 4px; cursor: pointer; }
-    .submitStatus { font-style: italic; color: green; margin-top: 5px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
-    input[type="text"], input[type="number"] { width: 90%; padding: 4px; }
-  </style>
-</head>
-<body>
-  <h1>Welcome to Your Gymnastics Dashboard</h1>
-  <div id="dashboard"></div>
+  <!-- Firebase Modular SDK -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
+    import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-  <script>
     // 🔥 Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyD3cJtk0c42pNAr3tsi_gQ7_9KcQS-HvgA",
       authDomain: "extracker-d2148.firebaseapp.com",
       projectId: "extracker-d2148"
     };
-    firebase.initializeApp(firebaseConfig);
 
-    // 📤 Backend URL
-    const scriptURL = "https://script.google.com/macros/s/AKfycbxsVJbFDp15cuOjO20qC30IQ5OPnLhAn02t7yMzusZixDJuZEJy2J_yK_AmoVTIQanA/exec";
-
-    // 🔐 Auth check
-    firebase.auth().onAuthStateChanged(user => {
-      if (user) {
-        window.currentUser = {
-          uid: user.uid,
-          email: user.email
-        };
-        buildDashboard();
-      } else {
-        window.location.href = "login.html";
-      }
-    });
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
 
     // 🧱 Event setup
     const events = [
@@ -54,6 +29,19 @@
       { name: "PB", skills: 8 },
       { name: "HB", skills: 8 }
     ];
+
+    // 🔐 Auth check
+    onAuthStateChanged(auth, user => {
+      if (user) {
+        window.currentUser = {
+          uid: user.uid,
+          email: user.email
+        };
+        buildDashboard();
+      } else {
+        window.location.href = "login.html";
+      }
+    });
 
     function buildDashboard() {
       const container = document.getElementById("dashboard");
@@ -89,7 +77,7 @@
         const statusMsg = document.createElement("p");
         statusMsg.className = "submitStatus";
 
-        submitBtn.addEventListener("click", () => {
+        submitBtn.addEventListener("click", async () => {
           const rows = panel.querySelectorAll("tbody tr");
           const skills = [];
 
@@ -111,25 +99,21 @@
             return;
           }
 
-          fetch(scriptURL, {
-            method: "POST",
-            body: JSON.stringify({
-              user: window.currentUser,
+          try {
+            const timestamp = new Date().toISOString();
+            const docRef = doc(db, "submissions", `${window.currentUser.uid}_${timestamp}`);
+            await setDoc(docRef, {
+              uid: window.currentUser.uid,
+              email: window.currentUser.email,
               event: event.name,
-              skills: skills
-            }),
-            headers: {
-              "Content-Type": "application/json"
-            }
-          })
-          .then(res => res.text())
-          .then(response => {
+              skills: skills,
+              submittedAt: timestamp
+            });
             statusMsg.textContent = `✅ Submitted on ${new Date().toLocaleString()}`;
-          })
-          .catch(err => {
+          } catch (err) {
             console.error("Submission error:", err);
             statusMsg.textContent = "❌ Submission failed. Try again.";
-          });
+          }
         });
 
         panel.appendChild(submitBtn);
@@ -138,5 +122,19 @@
       });
     }
   </script>
+
+  <style>
+    body { font-family: Arial; padding: 20px; background-color: #f9f9f9; }
+    .event-panel { margin-bottom: 30px; border: 1px solid #ccc; padding: 15px; border-radius: 6px; background: #fff; }
+    .submitBtn { margin-top: 10px; padding: 8px 16px; background-color: #0077cc; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    .submitStatus { font-style: italic; color: green; margin-top: 5px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+    input[type="text"], input[type="number"] { width: 90%; padding: 4px; }
+  </style>
+</head>
+<body>
+  <h1>Welcome to Your Gymnastics Dashboard</h1>
+  <div id="dashboard"></div>
 </body>
 </html>
