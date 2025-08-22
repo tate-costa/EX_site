@@ -1,38 +1,26 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Dashboard</title>
-  <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-auth.js"></script>
-</head>
-<body>
-  <h2>Welcome to Your Dashboard</h2>
-  <p id="user-status">Checking login status...</p>
-  <button id="logout-btn" style="display:none;">Logout</button>
+<script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-auth-compat.js"></script>
+<script>
+  // ✅ Firebase config
+  const firebaseConfig = {
+    apiKey: "AIzaSyD3cJtk0c42pNAr3tsi_gQ7_9KcQS-HvgA",
+    authDomain: "extracker-d2148.firebaseapp.com",
+    projectId: "extracker-d2148",
+    appId: "1:123456789012:web:abcdef123456" // Replace with your actual App ID
+  };
 
-  <script>
-    const firebaseConfig = { /* your config */ };
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
 
-    const status = document.getElementById("user-status");
-    const logoutBtn = document.getElementById("logout-btn");
-
-    auth.onAuthStateChanged(user => {
-      if (user && user.emailVerified) {
-        status.textContent = `Logged in as: ${user.email}`;
-        logoutBtn.style.display = "inline-block";
-      } else {
-        status.textContent = "Not logged in. Redirecting...";
-        setTimeout(() => window.location.href = "login.html", 2000);
-      }
-    });
-
-    logoutBtn.addEventListener("click", () => {
-      auth.signOut().then(() => {
-        window.location.href = "login.html";
-      });
-    });
-  </script>
-</body>
-</html>
+  // ✅ Check login status
+  auth.onAuthStateChanged((user) => {
+    if (user) {
+      console.log("User is signed in:", user.email);
+      // You can display user info here if needed
+      document.getElementById("welcomeMessage").textContent = `Welcome, ${user.displayName || user.email}`;
+    } else {
+      console.log("No user signed in. Redirecting...");
+      window.location.href = "signup.html";
+    }
+  });
+</script>
