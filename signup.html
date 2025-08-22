@@ -1,12 +1,40 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Sign Up</title>
-  <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-auth.js"></script>
+  <title>Create Account</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      padding: 2rem;
+      text-align: center;
+    }
+    form {
+      background: white;
+      padding: 2rem;
+      border-radius: 8px;
+      max-width: 400px;
+      margin: auto;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    input, button {
+      width: 100%;
+      padding: 0.75rem;
+      margin-top: 1rem;
+      font-size: 1rem;
+    }
+    #signup-message {
+      margin-top: 1rem;
+      font-size: 0.95rem;
+      color: red;
+    }
+  </style>
 </head>
 <body>
-  <h2>Create Account</h2>
+
+  <h2>Create Your Account</h2>
   <form id="signup-form">
     <input type="email" id="signup-email" placeholder="Email" required />
     <input type="password" id="signup-password" placeholder="Password (min 6 chars)" required />
@@ -14,29 +42,54 @@
     <p id="signup-message"></p>
   </form>
 
+  <!-- 🔥 Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-auth.js"></script>
+
   <script>
-    const firebaseConfig = { /* your config */ };
+    // 🔧 Firebase Config
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT.firebaseapp.com",
+      projectId: "YOUR_PROJECT_ID",
+      // Add other config values as needed
+    };
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
 
-    document.getElementById("signup-form").addEventListener("submit", e => {
+    // 🧠 Signup Logic
+    document.getElementById("signup-form").addEventListener("submit", function(e) {
       e.preventDefault();
-      const email = signup-email.value.trim();
-      const password = signup-password.value;
-      const msg = signup-message;
+      const email = document.getElementById("signup-email").value.trim();
+      const password = document.getElementById("signup-password").value;
+      const messageBox = document.getElementById("signup-message");
+      messageBox.textContent = "";
 
       if (password.length < 6) {
-        msg.textContent = "Password must be at least 6 characters.";
+        messageBox.textContent = "Password must be at least 6 characters.";
         return;
       }
 
       auth.createUserWithEmailAndPassword(email, password)
-        .then(userCred => {
-          msg.textContent = "Account created! Verification email sent.";
-          userCred.user.sendEmailVerification();
-          setTimeout(() => window.location.href = "dashboard.html", 2000);
+        .then(userCredential => {
+          const user = userCredential.user;
+          messageBox.style.color = "green";
+          messageBox.textContent = "Account created! Verification email sent.";
+
+          user.sendEmailVerification()
+            .then(() => console.log("Verification email sent"))
+            .catch(err => console.error("Email error:", err));
+
+          // ✅ Redirect after short delay
+          setTimeout(() => {
+            window.location.href = "dashboard.html";
+          }, 2000);
         })
-        .catch(err => msg.textContent = err.message);
+        .catch(error => {
+          messageBox.style.color = "red";
+          messageBox.textContent = error.message;
+          console.error("Signup error:", error);
+        });
     });
   </script>
 </body>
