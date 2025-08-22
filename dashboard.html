@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <title>Gymnastics Dashboard</title>
-  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js"></script>
+  <!-- ✅ Firebase UMD scripts for browser use -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
   <style>
     body { font-family: Arial; padding: 20px; background-color: #f9f9f9; }
     .event-panel { margin-bottom: 30px; border: 1px solid #ccc; padding: 15px; border-radius: 6px; background: #fff; }
@@ -29,7 +30,7 @@
     firebase.initializeApp(firebaseConfig);
 
     // 📤 Backend URL
-    const scriptURL = "https://script.google.com/macros/s/AKfycbxsVJbFDp15cuOjO20qC30IQ5OPnLhAn02t7yMzusZixDJuZEJy2J_yK_AmoVTIQanA/exec";
+    const scriptURL = "https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec";
 
     // 🔐 Capture user info
     firebase.auth().onAuthStateChanged(user => {
@@ -40,12 +41,12 @@
         };
         buildDashboard();
       } else {
-        window.location.href = "signup.html"; // or login.html
+        window.location.href = "login.html"; // or signup.html
       }
     });
 
     // 🧱 Event list
-    const events = ["FX", "PH", "SR", "VT", "PB", "HB"];
+    const events = ["Vault", "Bars", "Beam", "Floor"];
 
     function buildDashboard() {
       const container = document.getElementById("dashboard");
