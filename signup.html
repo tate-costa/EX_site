@@ -13,7 +13,6 @@
   <p id="statusMessage"></p>
 
   <script>
-    // ✅ Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyD3cJtk0c42pNAr3tsi_gQ7_9KcQS-HvgA",
       authDomain: "extracker-d2148.firebaseapp.com",
@@ -26,13 +25,12 @@
     const provider = new firebase.auth.GoogleAuthProvider();
     const statusMessage = document.getElementById("statusMessage");
 
-    // ✅ Trigger popup-based signup
     document.getElementById("signupBtn").addEventListener("click", () => {
       auth.signInWithPopup(provider)
         .then((result) => {
           statusMessage.textContent = "Signup successful. Redirecting...";
           setTimeout(() => {
-            window.location.href = "https://tate-costa.github.io/EX_site/dashboard.html";
+            window.location.href = "https://tate-costa.github.io/EX_site/index.html";
           }, 1000);
         })
         .catch((error) => {
