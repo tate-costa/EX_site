@@ -26,24 +26,19 @@
     const provider = new firebase.auth.GoogleAuthProvider();
     const statusMessage = document.getElementById("statusMessage");
 
-    // ✅ Handle redirect result after returning from Google
-    auth.getRedirectResult()
-      .then((result) => {
-        if (result.user) {
+    // ✅ Trigger popup-based signup
+    document.getElementById("signupBtn").addEventListener("click", () => {
+      auth.signInWithPopup(provider)
+        .then((result) => {
           statusMessage.textContent = "Signup successful. Redirecting...";
           setTimeout(() => {
             window.location.href = "https://tate-costa.github.io/EX_site/dashboard.html";
-          }, 1500);
-        }
-      })
-      .catch((error) => {
-        console.error("Redirect error:", error);
-        statusMessage.textContent = "Signup failed. Please try again.";
-      });
-
-    // ✅ Trigger Google signup
-    document.getElementById("signupBtn").addEventListener("click", () => {
-      auth.signInWithRedirect(provider);
+          }, 1000);
+        })
+        .catch((error) => {
+          console.error("Popup signup error:", error);
+          statusMessage.textContent = "Signup failed. Please try again.";
+        });
     });
   </script>
 </body>
