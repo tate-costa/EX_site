@@ -1,118 +1,75 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
+  <title>Welcome</title>
   <meta charset="UTF-8" />
-  <title>Execution Tracker</title>
-
-  <!-- Firebase SDKs -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-
-  <!-- SheetJS for Excel export -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
-    body { font-family: sans-serif; padding: 20px; }
-    .event { margin-bottom: 30px; }
-    input { margin: 5px; width: 200px; }
-    button { margin-top: 10px; }
-    .hidden { display: none; }
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 3rem;
+      background: #f0f4f8;
+    }
+    h1 {
+      margin-bottom: 2rem;
+    }
+    .nav-buttons a {
+      display: inline-block;
+      margin: 1rem;
+      padding: 1rem 2rem;
+      background: #007bff;
+      color: white;
+      text-decoration: none;
+      border-radius: 6px;
+      font-size: 1.1rem;
+      transition: background 0.3s;
+    }
+    .nav-buttons a:hover {
+      background: #0056b3;
+    }
+    #redirect-message {
+      margin-top: 2rem;
+      font-size: 1rem;
+      color: green;
+    }
   </style>
 </head>
 <body>
+  <h1>Welcome to Your Execution Tracker</h1>
+  <p>Select an option to get started:</p>
 
-  <h2>Login</h2>
-  <div id="login-section">
-    <input type="email" id="email" placeholder="Email" />
-    <input type="password" id="password" placeholder="Password" />
-    <button onclick="login()">Login</button>
+  <div class="nav-buttons">
+    <a href="signup.html">Create Account</a>
+    <a href="login.html">Login</a>
+    <a href="dashboard.html">Go to Dashboard</a>
   </div>
 
-  <div id="dashboard" class="hidden">
-    <h2>Welcome, <span id="user-display"></span></h2>
-    <div id="events-container"></div>
-    <button onclick="exportToExcel()">Download Excel</button>
-  </div>
+  <p id="redirect-message"></p>
+
+  <!-- 🔥 Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-auth.js"></script>
 
   <script>
-    // 🔌 Replace with your Firebase config
     const firebaseConfig = {
       apiKey: "YOUR_API_KEY",
       authDomain: "YOUR_PROJECT.firebaseapp.com",
       projectId: "YOUR_PROJECT_ID",
-      // ... other config values
+      // Add other config values as needed
     };
     firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
 
-    const events = ["FX", "PH", "SR", "VT", "PB", "HB"];
-    const userData = {};
-
-    function login() {
-      const email = document.getElementById("email").value.trim();
-      const password = document.getElementById("password").value.trim();
-
-      firebase.auth().signInWithEmailAndPassword(email, password)
-        .then(userCredential => {
-          const user = userCredential.user;
-          userData.username = user.email;
-          userData.events = {};
-          document.getElementById("login-section").classList.add("hidden");
-          document.getElementById("dashboard").classList.remove("hidden");
-          document.getElementById("user-display").textContent = user.email;
-          renderEventForms();
-        })
-        .catch(error => {
-          alert("Login failed: " + error.message);
-        });
-    }
-
-    function renderEventForms() {
-      const container = document.getElementById("events-container");
-      events.forEach(event => {
-        const div = document.createElement("div");
-        div.className = "event";
-        div.innerHTML = `<h3>${event}</h3><form id="${event}-form"></form>`;
-        for (let i = 1; i <= 8; i++) {
-          const input = document.createElement("input");
-          input.type = "text";
-          input.placeholder = `Skill ${i}`;
-          input.name = `skill${i}`;
-          div.querySelector("form").appendChild(input);
-        }
-        const saveBtn = document.createElement("button");
-        saveBtn.textContent = "Save";
-        saveBtn.type = "button";
-        saveBtn.onclick = () => saveEventData(event);
-        div.querySelector("form").appendChild(saveBtn);
-        container.appendChild(div);
-      });
-    }
-
-    function saveEventData(event) {
-      const form = document.getElementById(`${event}-form`);
-      const skills = [];
-      for (let i = 1; i <= 8; i++) {
-        skills.push(form.elements[`skill${i}`].value.trim());
+    // 🔁 Redirect if already logged in
+    auth.onAuthStateChanged(user => {
+      if (user && user.emailVerified) {
+        document.getElementById("redirect-message").textContent = "Redirecting to dashboard...";
+        setTimeout(() => {
+          window.location.href = "dashboard.html";
+        }, 1500);
       }
-      userData.events[event] = skills;
-      alert(`${event} skills saved!`);
-    }
-
-    function exportToExcel() {
-      const wb = XLSX.utils.book_new();
-
-      Object.entries(userData.events).forEach(([event, skills]) => {
-        const sheetData = [["Skill #", "Name"]];
-        skills.forEach((skill, i) => {
-          sheetData.push([i + 1, skill]);
-        });
-        const ws = XLSX.utils.aoa_to_sheet(sheetData);
-        XLSX.utils.book_append_sheet(wb, ws, event);
-      });
-
-      XLSX.writeFile(wb, `${userData.username}_ExecutionTracker.xlsx`);
-    }
+    });
   </script>
-
 </body>
 </html>
