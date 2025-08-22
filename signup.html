@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Sign Up</title>
+  <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-auth.js"></script>
+</head>
+<body>
+  <h2>Create Account</h2>
+  <form id="signup-form">
+    <input type="email" id="signup-email" placeholder="Email" required />
+    <input type="password" id="signup-password" placeholder="Password (min 6 chars)" required />
+    <button type="submit">Sign Up</button>
+    <p id="signup-message"></p>
+  </form>
+
+  <script>
+    const firebaseConfig = { /* your config */ };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+
+    document.getElementById("signup-form").addEventListener("submit", e => {
+      e.preventDefault();
+      const email = signup-email.value.trim();
+      const password = signup-password.value;
+      const msg = signup-message;
+
+      if (password.length < 6) {
+        msg.textContent = "Password must be at least 6 characters.";
+        return;
+      }
+
+      auth.createUserWithEmailAndPassword(email, password)
+        .then(userCred => {
+          msg.textContent = "Account created! Verification email sent.";
+          userCred.user.sendEmailVerification();
+          setTimeout(() => window.location.href = "dashboard.html", 2000);
+        })
+        .catch(err => msg.textContent = err.message);
+    });
+  </script>
+</body>
+</html>
