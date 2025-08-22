@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Execution Tracker</title>
+  <style>
+    body { font-family: Arial; margin: 20px; }
+    .event-section { margin-bottom: 40px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 10px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    h2 { margin-top: 40px; }
+  </style>
+</head>
+<body>
+
+  <h1>Execution Tracker</h1>
+
+  <div id="events"></div>
+
+  <script>
+    const eventNames = ["FX", "PH", "SR", "VT", "PB", "HB"];
+    const eventData = {};
+
+    function createEventSection(event) {
+      eventData[event] = [];
+
+      const section = document.createElement("div");
+      section.className = "event-section";
+
+      section.innerHTML = `
+        <h2>${event}</h2>
+        <input type="text" id="${event}_skill" placeholder="Enter Skill Name">
+        <input type="number" id="${event}_score" placeholder="Enter Score">
+        <button onclick="addEntry('${event}')">Add Entry</button>
+        <h3>All Entries</h3>
+        <table id="${event}_table">
+          <tr><th>Skill</th><th>Score</th></tr>
+        </table>
+        <h3>Skill Averages</h3>
+        <div id="${event}_averages"></div>
+      `;
+
+      document.getElementById("events").appendChild(section);
+    }
+
+    function addEntry(event) {
+      const skill = document.getElementById(`${event}_skill`).value.trim();
+      const score = parseFloat(document.getElementById(`${event}_score`).value);
+      if (skill && !isNaN(score)) {
+        eventData[event].push({ skill, score });
+        updateTable(event);
+        updateAverages(event);
+        document.getElementById(`${event}_skill`).value = "";
+        document.getElementById(`${event}_score`).value = "";
+      }
+    }
+
+    function updateTable(event) {
+      const table = document.getElementById(`${event}_table`);
+      table.innerHTML = "<tr><th>Skill</th><th>Score</th></tr>";
+      eventData[event].forEach(entry => {
+        table.innerHTML += `<tr><td>${entry.skill}</td><td>${entry.score}</td></tr>`;
+      });
+    }
+
+    function updateAverages(event) {
+      const avg = {};
+      eventData[event].forEach(({ skill, score }) => {
+        if (!avg[skill]) avg[skill] = [];
+        avg[skill].push(score);
+      });
+
+      let html = "<ul>";
+      for (let skill in avg) {
+        const scores = avg[skill];
+        const mean = (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(2);
+        html += `<li>${skill}: ${mean}</li>`;
+      }
+      html += "</ul>";
+      document.getElementById(`${event}_averages`).innerHTML = html;
+    }
+
+    // Initialize all event sections
+    eventNames.forEach(createEventSection);
+  </script>
+
+</body>
+</html>
