@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Gymnastics Dashboard</title>
-  <!-- ✅ Firebase UMD scripts for browser use -->
+  <!-- Firebase UMD scripts -->
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
   <style>
@@ -32,7 +32,7 @@
     // 📤 Backend URL
     const scriptURL = "https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec";
 
-    // 🔐 Capture user info
+    // 🔐 Auth check
     firebase.auth().onAuthStateChanged(user => {
       if (user) {
         window.currentUser = {
@@ -41,12 +41,19 @@
         };
         buildDashboard();
       } else {
-        window.location.href = "login.html"; // or signup.html
+        window.location.href = "login.html";
       }
     });
 
-    // 🧱 Event list
-    const events = ["Vault", "Bars", "Beam", "Floor"];
+    // 🧱 Event setup
+    const events = [
+      { name: "FX", skills: 8 },
+      { name: "PH", skills: 8 },
+      { name: "SR", skills: 8 },
+      { name: "VT", skills: 3 },
+      { name: "PB", skills: 8 },
+      { name: "HB", skills: 8 }
+    ];
 
     function buildDashboard() {
       const container = document.getElementById("dashboard");
@@ -56,22 +63,22 @@
         panel.className = "event-panel";
 
         const title = document.createElement("h2");
-        title.textContent = `Event: ${event}`;
+        title.textContent = `Event: ${event.name}`;
         panel.appendChild(title);
 
         const table = document.createElement("table");
+        const rowsHTML = Array.from({ length: event.skills }).map(() => `
+          <tr>
+            <td><input type="text" placeholder="Skill name"></td>
+            <td><input type="number" placeholder="Score" step="0.1" min="0" max="10"></td>
+          </tr>
+        `).join('');
+
         table.innerHTML = `
           <thead>
             <tr><th>Skill</th><th>Score</th></tr>
           </thead>
-          <tbody>
-            ${Array.from({ length: 6 }).map(() => `
-              <tr>
-                <td><input type="text" placeholder="Skill name"></td>
-                <td><input type="number" placeholder="Score" step="0.1" min="0" max="10"></td>
-              </tr>
-            `).join('')}
-          </tbody>
+          <tbody>${rowsHTML}</tbody>
         `;
         panel.appendChild(table);
 
@@ -108,7 +115,7 @@
             method: "POST",
             body: JSON.stringify({
               user: window.currentUser,
-              event: event,
+              event: event.name,
               skills: skills
             }),
             headers: {
