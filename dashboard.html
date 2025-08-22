@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Dashboard</title>
+  <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-auth.js"></script>
+</head>
+<body>
+  <h2>Welcome to Your Dashboard</h2>
+  <p id="user-status">Checking login status...</p>
+  <button id="logout-btn" style="display:none;">Logout</button>
+
+  <script>
+    const firebaseConfig = { /* your config */ };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+
+    const status = document.getElementById("user-status");
+    const logoutBtn = document.getElementById("logout-btn");
+
+    auth.onAuthStateChanged(user => {
+      if (user && user.emailVerified) {
+        status.textContent = `Logged in as: ${user.email}`;
+        logoutBtn.style.display = "inline-block";
+      } else {
+        status.textContent = "Not logged in. Redirecting...";
+        setTimeout(() => window.location.href = "login.html", 2000);
+      }
+    });
+
+    logoutBtn.addEventListener("click", () => {
+      auth.signOut().then(() => {
+        window.location.href = "login.html";
+      });
+    });
+  </script>
+</body>
+</html>
