@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gymnastics Skill Tracker</title>
+  <title>Gymnastics Skill Dashboard</title>
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-auth-compat.js"></script>
   <style>
@@ -15,26 +15,43 @@
     h1, h2 {
       color: #333;
     }
+    nav {
+      margin-bottom: 1rem;
+    }
+    .tab-button {
+      padding: 0.5rem 1rem;
+      margin-right: 0.5rem;
+      background-color: #0077cc;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
+    }
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-bottom: 2rem;
+      margin-top: 1rem;
     }
     th, td {
       border: 1px solid #ccc;
       padding: 0.5rem;
       text-align: center;
     }
-    input[type="number"] {
-      width: 60px;
+    input[type="text"], input[type="number"] {
+      width: 100px;
     }
     .average {
       font-weight: bold;
       color: #0077cc;
     }
     #logoutBtn {
-      margin-top: 1rem;
-      display: inline-block;
+      margin-top: 2rem;
       padding: 0.5rem 1rem;
       background-color: #0077cc;
       color: white;
@@ -47,24 +64,8 @@
 <body>
   <h1 id="welcomeMessage">Loading dashboard...</h1>
 
-  <h2>Enter Skill Scores for Each Event</h2>
-  <table id="skillTable">
-    <thead>
-      <tr>
-        <th>Skill</th>
-        <th>Floor</th>
-        <th>Vault</th>
-        <th>Bars</th>
-        <th>Beam</th>
-        <th>Rings</th>
-        <th>Pommel</th>
-        <th>Average</th>
-      </tr>
-    </thead>
-    <tbody>
-      <!-- Rows will be dynamically generated -->
-    </tbody>
-  </table>
+  <nav id="eventTabs"></nav>
+  <div id="eventPanels"></div>
 
   <button id="logoutBtn">Log Out</button>
 
@@ -94,61 +95,81 @@
       });
     });
 
-    // 🧠 Skill and Event Setup
-    const skills = ["Strength", "Flexibility", "Balance", "Coordination", "Endurance", "Technique"];
-    const events = ["Floor", "Vault", "Bars", "Beam", "Rings", "Pommel"];
-    const tbody = document.querySelector("#skillTable tbody");
+    // 🧠 Events in order
+    const events = ["FX", "PH", "SR", "VT", "PB", "HB"];
+    const eventTabs = document.getElementById("eventTabs");
+    const eventPanels = document.getElementById("eventPanels");
 
-    skills.forEach((skill, skillIndex) => {
-      const row = document.createElement("tr");
-      const skillCell = document.createElement("td");
-      skillCell.textContent = skill;
-      row.appendChild(skillCell);
-
-      let inputs = [];
-
-      events.forEach((event, eventIndex) => {
-        const cell = document.createElement("td");
-        const input = document.createElement("input");
-        input.type = "number";
-        input.min = "0";
-        input.max = "10";
-        input.step = "0.1";
-        input.addEventListener("input", () => calculateAverage(skillIndex));
-        inputs.push(input);
-        cell.appendChild(input);
-        row.appendChild(cell);
+    events.forEach((event, index) => {
+      // Create tab button
+      const tabBtn = document.createElement("button");
+      tabBtn.className = "tab-button";
+      tabBtn.textContent = event;
+      tabBtn.addEventListener("click", () => {
+        document.querySelectorAll(".tab-content").forEach(panel => panel.classList.remove("active"));
+        document.getElementById(`panel-${event}`).classList.add("active");
       });
+      eventTabs.appendChild(tabBtn);
 
-      const avgCell = document.createElement("td");
-      avgCell.className = "average";
-      avgCell.textContent = "0.0";
-      row.appendChild(avgCell);
+      // Create tab content
+      const panel = document.createElement("div");
+      panel.className = "tab-content";
+      panel.id = `panel-${event}`;
+      if (index === 0) panel.classList.add("active");
 
-      tbody.appendChild(row);
-      row.dataset.inputs = JSON.stringify(inputs.map((input) => input));
-      row.dataset.avgCell = avgCell;
+      const title = document.createElement("h2");
+      title.textContent = `Event: ${event}`;
+      panel.appendChild(title);
+
+      const table = document.createElement("table");
+      const thead = document.createElement("thead");
+      thead.innerHTML = `
+        <tr>
+          <th>Skill Name</th>
+          <th>Score (0–10)</th>
+          <th>Average</th>
+        </tr>
+      `;
+      table.appendChild(thead);
+
+      const tbody = document.createElement("tbody");
+
+      for (let i = 0; i < 6; i++) {
+        const row = document.createElement("tr");
+
+        const skillInput = document.createElement("input");
+        skillInput.type = "text";
+        skillInput.placeholder = "Enter skill";
+        const skillCell = document.createElement("td");
+        skillCell.appendChild(skillInput);
+        row.appendChild(skillCell);
+
+        const scoreInput = document.createElement("input");
+        scoreInput.type = "number";
+        scoreInput.min = "0";
+        scoreInput.max = "10";
+        scoreInput.step = "0.1";
+        const scoreCell = document.createElement("td");
+        scoreCell.appendChild(scoreInput);
+        row.appendChild(scoreCell);
+
+        const avgCell = document.createElement("td");
+        avgCell.className = "average";
+        avgCell.textContent = "0.0";
+        row.appendChild(avgCell);
+
+        scoreInput.addEventListener("input", () => {
+          const val = parseFloat(scoreInput.value);
+          avgCell.textContent = !isNaN(val) ? val.toFixed(2) : "0.0";
+        });
+
+        tbody.appendChild(row);
+      }
+
+      table.appendChild(tbody);
+      panel.appendChild(table);
+      eventPanels.appendChild(panel);
     });
-
-    function calculateAverage(skillIndex) {
-      const row = tbody.children[skillIndex];
-      const inputs = JSON.parse(row.dataset.inputs).map(id => document.querySelector(`[data-input-id="${id}"]`) || id);
-      const avgCell = row.dataset.avgCell;
-
-      let total = 0;
-      let count = 0;
-
-      inputs.forEach(input => {
-        const val = parseFloat(input.value);
-        if (!isNaN(val)) {
-          total += val;
-          count++;
-        }
-      });
-
-      const average = count > 0 ? (total / count).toFixed(2) : "0.0";
-      row.lastChild.textContent = average;
-    }
   </script>
 </body>
 </html>
