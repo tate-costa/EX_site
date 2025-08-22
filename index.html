@@ -1,86 +1,117 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8" />
   <title>Execution Tracker</title>
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+
+  <!-- SheetJS for Excel export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
   <style>
-    body { font-family: Arial; margin: 20px; }
-    .event-section { margin-bottom: 40px; }
-    table { border-collapse: collapse; width: 100%; margin-top: 10px; }
-    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-    h2 { margin-top: 40px; }
+    body { font-family: sans-serif; padding: 20px; }
+    .event { margin-bottom: 30px; }
+    input { margin: 5px; width: 200px; }
+    button { margin-top: 10px; }
+    .hidden { display: none; }
   </style>
 </head>
 <body>
 
-  <h1>Execution Tracker</h1>
+  <h2>Login</h2>
+  <div id="login-section">
+    <input type="email" id="email" placeholder="Email" />
+    <input type="password" id="password" placeholder="Password" />
+    <button onclick="login()">Login</button>
+  </div>
 
-  <div id="events"></div>
+  <div id="dashboard" class="hidden">
+    <h2>Welcome, <span id="user-display"></span></h2>
+    <div id="events-container"></div>
+    <button onclick="exportToExcel()">Download Excel</button>
+  </div>
 
   <script>
-    const eventNames = ["FX", "PH", "SR", "VT", "PB", "HB"];
-    const eventData = {};
+    // 🔌 Replace with your Firebase config
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT.firebaseapp.com",
+      projectId: "YOUR_PROJECT_ID",
+      // ... other config values
+    };
+    firebase.initializeApp(firebaseConfig);
 
-    function createEventSection(event) {
-      eventData[event] = [];
+    const events = ["FX", "PH", "SR", "VT", "PB", "HB"];
+    const userData = {};
 
-      const section = document.createElement("div");
-      section.className = "event-section";
+    function login() {
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value.trim();
 
-      section.innerHTML = `
-        <h2>${event}</h2>
-        <input type="text" id="${event}_skill" placeholder="Enter Skill Name">
-        <input type="number" id="${event}_score" placeholder="Enter Score">
-        <button onclick="addEntry('${event}')">Add Entry</button>
-        <h3>All Entries</h3>
-        <table id="${event}_table">
-          <tr><th>Skill</th><th>Score</th></tr>
-        </table>
-        <h3>Skill Averages</h3>
-        <div id="${event}_averages"></div>
-      `;
-
-      document.getElementById("events").appendChild(section);
+      firebase.auth().signInWithEmailAndPassword(email, password)
+        .then(userCredential => {
+          const user = userCredential.user;
+          userData.username = user.email;
+          userData.events = {};
+          document.getElementById("login-section").classList.add("hidden");
+          document.getElementById("dashboard").classList.remove("hidden");
+          document.getElementById("user-display").textContent = user.email;
+          renderEventForms();
+        })
+        .catch(error => {
+          alert("Login failed: " + error.message);
+        });
     }
 
-    function addEntry(event) {
-      const skill = document.getElementById(`${event}_skill`).value.trim();
-      const score = parseFloat(document.getElementById(`${event}_score`).value);
-      if (skill && !isNaN(score)) {
-        eventData[event].push({ skill, score });
-        updateTable(event);
-        updateAverages(event);
-        document.getElementById(`${event}_skill`).value = "";
-        document.getElementById(`${event}_score`).value = "";
-      }
-    }
-
-    function updateTable(event) {
-      const table = document.getElementById(`${event}_table`);
-      table.innerHTML = "<tr><th>Skill</th><th>Score</th></tr>";
-      eventData[event].forEach(entry => {
-        table.innerHTML += `<tr><td>${entry.skill}</td><td>${entry.score}</td></tr>`;
+    function renderEventForms() {
+      const container = document.getElementById("events-container");
+      events.forEach(event => {
+        const div = document.createElement("div");
+        div.className = "event";
+        div.innerHTML = `<h3>${event}</h3><form id="${event}-form"></form>`;
+        for (let i = 1; i <= 8; i++) {
+          const input = document.createElement("input");
+          input.type = "text";
+          input.placeholder = `Skill ${i}`;
+          input.name = `skill${i}`;
+          div.querySelector("form").appendChild(input);
+        }
+        const saveBtn = document.createElement("button");
+        saveBtn.textContent = "Save";
+        saveBtn.type = "button";
+        saveBtn.onclick = () => saveEventData(event);
+        div.querySelector("form").appendChild(saveBtn);
+        container.appendChild(div);
       });
     }
 
-    function updateAverages(event) {
-      const avg = {};
-      eventData[event].forEach(({ skill, score }) => {
-        if (!avg[skill]) avg[skill] = [];
-        avg[skill].push(score);
-      });
-
-      let html = "<ul>";
-      for (let skill in avg) {
-        const scores = avg[skill];
-        const mean = (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(2);
-        html += `<li>${skill}: ${mean}</li>`;
+    function saveEventData(event) {
+      const form = document.getElementById(`${event}-form`);
+      const skills = [];
+      for (let i = 1; i <= 8; i++) {
+        skills.push(form.elements[`skill${i}`].value.trim());
       }
-      html += "</ul>";
-      document.getElementById(`${event}_averages`).innerHTML = html;
+      userData.events[event] = skills;
+      alert(`${event} skills saved!`);
     }
 
-    // Initialize all event sections
-    eventNames.forEach(createEventSection);
+    function exportToExcel() {
+      const wb = XLSX.utils.book_new();
+
+      Object.entries(userData.events).forEach(([event, skills]) => {
+        const sheetData = [["Skill #", "Name"]];
+        skills.forEach((skill, i) => {
+          sheetData.push([i + 1, skill]);
+        });
+        const ws = XLSX.utils.aoa_to_sheet(sheetData);
+        XLSX.utils.book_append_sheet(wb, ws, event);
+      });
+
+      XLSX.writeFile(wb, `${userData.username}_ExecutionTracker.xlsx`);
+    }
   </script>
 
 </body>
