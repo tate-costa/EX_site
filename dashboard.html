@@ -3,119 +3,115 @@
 <head>
   <meta charset="UTF-8">
   <title>Gymnastics Dashboard</title>
+  <style>
+    body { font-family: Arial; padding: 20px; background-color: #f4f4f4; }
+    select, input[type="text"], input[type="number"] { padding: 6px; margin: 4px; }
+    .submitBtn, #downloadBtn { margin-top: 10px; padding: 8px 16px; background-color: #0077cc; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    .submitStatus { font-style: italic; color: green; margin-top: 5px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+    #eventForm, #dataBreakdown { margin-top: 20px; background: #fff; padding: 15px; border-radius: 6px; box-shadow: 0 0 5px rgba(0,0,0,0.1); }
+  </style>
+</head>
+<body>
+  <h1>Gymnastics Dashboard</h1>
+
+  <label for="eventSelect">Select Event:</label>
+  <select id="eventSelect">
+    <option value="">--Choose an event--</option>
+    <option value="FX">FX</option>
+    <option value="PH">PH</option>
+    <option value="SR">SR</option>
+    <option value="VT">VT</option>
+    <option value="PB">PB</option>
+    <option value="HB">HB</option>
+  </select>
+
+  <div id="eventForm"></div>
+
+  <h2>📊 Data Breakdown</h2>
+  <div id="dataBreakdown">
+    <table>
+      <thead>
+        <tr><th>Timestamp</th><th>Event</th><th>Skill</th><th>Value</th><th>Deduction</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <button id="downloadBtn">Download CSV</button>
+  </div>
+
   <script>
-    // 🧱 Event setup
-    const events = [
-      { name: "FX", skills: 8 },
-      { name: "PH", skills: 8 },
-      { name: "SR", skills: 8 },
-      { name: "VT", skills: 3 },
-      { name: "PB", skills: 8 },
-      { name: "HB", skills: 8 }
-    ];
+    const eventSelect = document.getElementById("eventSelect");
+    const eventForm = document.getElementById("eventForm");
+    const breakdownBody = document.querySelector("#dataBreakdown tbody");
 
-    function buildDashboard() {
-      const container = document.getElementById("dashboard");
-      const breakdown = document.getElementById("dataBreakdown");
+    eventSelect.addEventListener("change", () => {
+      const selectedEvent = eventSelect.value;
+      eventForm.innerHTML = "";
+      if (!selectedEvent) return;
 
-      events.forEach(event => {
-        const panel = document.createElement("div");
-        panel.className = "event-panel";
+      const table = document.createElement("table");
+      table.innerHTML = `
+        <thead>
+          <tr><th>Skill</th><th>Value</th><th>Deduction</th></tr>
+        </thead>
+        <tbody>
+          ${Array.from({ length: 8 }).map(() => `
+            <tr>
+              <td><input type="text" placeholder="Skill name"></td>
+              <td><input type="number" placeholder="Value" step="0.1" min="0"></td>
+              <td><input type="number" placeholder="Deduction" step="0.1" min="0"></td>
+            </tr>
+          `).join('')}
+        </tbody>
+      `;
+      eventForm.appendChild(table);
 
-        const title = document.createElement("h2");
-        title.textContent = `Event: ${event.name}`;
-        panel.appendChild(title);
+      const submitBtn = document.createElement("button");
+      submitBtn.className = "submitBtn";
+      submitBtn.textContent = "Submit Scores";
 
-        const table = document.createElement("table");
-        const rowsHTML = Array.from({ length: event.skills }).map(() => `
-          <tr>
-            <td><input type="text" placeholder="Skill name"></td>
-            <td><input type="number" placeholder="Score" step="0.1" min="0" max="10"></td>
-          </tr>
-        `).join('');
+      const statusMsg = document.createElement("p");
+      statusMsg.className = "submitStatus";
 
-        table.innerHTML = `
-          <thead>
-            <tr><th>Skill</th><th>Score</th></tr>
-          </thead>
-          <tbody>${rowsHTML}</tbody>
-        `;
-        panel.appendChild(table);
+      submitBtn.addEventListener("click", () => {
+        const rows = table.querySelectorAll("tbody tr");
+        const timestamp = new Date().toLocaleString();
+        let valid = false;
 
-        const submitBtn = document.createElement("button");
-        submitBtn.className = "submitBtn";
-        submitBtn.textContent = "Submit Scores";
-
-        const statusMsg = document.createElement("p");
-        statusMsg.className = "submitStatus";
-
-        submitBtn.addEventListener("click", () => {
-          const rows = panel.querySelectorAll("tbody tr");
-          const skills = [];
-
-          rows.forEach(row => {
-            const name = row.querySelector("input[type='text']").value.trim();
-            const score = parseFloat(row.querySelector("input[type='number']").value);
-            if (name && !isNaN(score)) {
-              skills.push({ name, score });
-            }
-          });
-
-          if (skills.length === 0) {
-            statusMsg.textContent = "Please enter at least one skill and score.";
-            return;
+        rows.forEach(row => {
+          const name = row.querySelector("input[type='text']").value.trim();
+          const value = parseFloat(row.querySelector("input[placeholder='Value']").value);
+          const deduction = parseFloat(row.querySelector("input[placeholder='Deduction']").value);
+          if (name && !isNaN(value) && !isNaN(deduction)) {
+            valid = true;
+            const tr = document.createElement("tr");
+            tr.innerHTML = `<td>${timestamp}</td><td>${selectedEvent}</td><td>${name}</td><td>${value}</td><td>${deduction}</td>`;
+            breakdownBody.appendChild(tr);
           }
-
-          const timestamp = new Date().toLocaleString();
-          const row = document.createElement("tr");
-          row.innerHTML = `<td>${event.name}</td><td>${JSON.stringify(skills)}</td><td>${timestamp}</td>`;
-          breakdown.querySelector("tbody").appendChild(row);
-
-          statusMsg.textContent = `✅ Submitted on ${timestamp}`;
         });
 
-        panel.appendChild(submitBtn);
-        panel.appendChild(statusMsg);
-        container.appendChild(panel);
+        statusMsg.textContent = valid ? `✅ Submitted on ${timestamp}` : "Please enter at least one complete skill entry.";
       });
-    }
 
-    function downloadData() {
+      eventForm.appendChild(submitBtn);
+      eventForm.appendChild(statusMsg);
+    });
+
+    document.getElementById("downloadBtn").addEventListener("click", () => {
       const rows = Array.from(document.querySelectorAll("#dataBreakdown tbody tr"));
-      const csv = rows.map(row => Array.from(row.children).map(cell => `"${cell.textContent}"`).join(",")).join("
-");
+      const csv = rows.map(row =>
+        Array.from(row.children).map(cell => `"${cell.textContent}"`).join(",")
+      ).join("\n");
+
       const blob = new Blob([csv], { type: "text/csv" });
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
       link.download = "gymnastics_data.csv";
+      document.body.appendChild(link);
       link.click();
-    }
-
-    window.onload = buildDashboard;
+      document.body.removeChild(link);
+    });
   </script>
-
-  <style>
-    body { font-family: Arial; padding: 20px; background-color: #f9f9f9; }
-    .event-panel { margin-bottom: 30px; border: 1px solid #ccc; padding: 15px; border-radius: 6px; background: #fff; }
-    .submitBtn { margin-top: 10px; padding: 8px 16px; background-color: #0077cc; color: white; border: none; border-radius: 4px; cursor: pointer; }
-    .submitStatus { font-style: italic; color: green; margin-top: 5px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
-    input[type="text"], input[type="number"] { width: 90%; padding: 4px; }
-    #downloadBtn { margin-top: 20px; padding: 8px 16px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; }
-  </style>
-</head>
-<body>
-  <h1>Welcome to Your Gymnastics Dashboard</h1>
-  <div id="dashboard"></div>
-
-  <h2>Data Breakdown</h2>
-  <table id="dataBreakdown">
-    <thead>
-      <tr><th>Event</th><th>Skills</th><th>Timestamp</th></tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-  <button id="downloadBtn" onclick="downloadData()">Download Data</button>
 </body>
 </html>
