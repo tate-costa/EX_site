@@ -1,97 +1,53 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Create Account</title>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f5f5f5;
-      padding: 2rem;
-      text-align: center;
-    }
-    form {
-      background: white;
-      padding: 2rem;
-      border-radius: 8px;
-      max-width: 400px;
-      margin: auto;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    }
-    input, button {
-      width: 100%;
-      padding: 0.75rem;
-      margin-top: 1rem;
-      font-size: 1rem;
-    }
-    #signup-message {
-      margin-top: 1rem;
-      font-size: 0.95rem;
-      color: red;
-    }
-  </style>
+  <title>Sign Up</title>
+  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-auth.js"></script>
 </head>
 <body>
-
-  <h2>Create Your Account</h2>
-  <form id="signup-form">
-    <input type="email" id="signup-email" placeholder="Email" required />
-    <input type="password" id="signup-password" placeholder="Password (min 6 chars)" required />
-    <button type="submit">Sign Up</button>
-    <p id="signup-message"></p>
-  </form>
-
-  <!-- 🔥 Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-auth.js"></script>
+  <h1>Sign Up</h1>
+  <button id="signupBtn">Sign up with Google</button>
 
   <script>
-    // 🔧 Firebase Config
+    // ✅ Firebase config with your actual credentials
     const firebaseConfig = {
-      apiKey: "YOUR_API_KEY",
-      authDomain: "YOUR_PROJECT.firebaseapp.com",
-      projectId: "YOUR_PROJECT_ID",
-      // Add other config values as needed
+      apiKey: "AIzaSyD3cJtk0c42pNAr3tsi_gQ7_9KcQS-HvgA",
+      authDomain: "extracker.firebaseapp.com",
+      projectId: "extracker-d2148",
+      appId: "1:123456789012:web:abcdef123456" // Replace with your actual App ID
     };
-    firebase.initializeApp(firebaseConfig);
+
+    // ✅ Initialize Firebase
+    const app = firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
+    const provider = new firebase.auth.GoogleAuthProvider();
 
-    // 🧠 Signup Logic
-    document.getElementById("signup-form").addEventListener("submit", function(e) {
-      e.preventDefault();
-      const email = document.getElementById("signup-email").value.trim();
-      const password = document.getElementById("signup-password").value;
-      const messageBox = document.getElementById("signup-message");
-      messageBox.textContent = "";
-
-      if (password.length < 6) {
-        messageBox.textContent = "Password must be at least 6 characters.";
-        return;
+    // ✅ Redirect returning users
+    auth.onAuthStateChanged((user) => {
+      if (user) {
+        window.location.href = "https://tate-costa.github.io/EX_site/dashboard.html";
       }
-
-      auth.createUserWithEmailAndPassword(email, password)
-        .then(userCredential => {
-          const user = userCredential.user;
-          messageBox.style.color = "green";
-          messageBox.textContent = "Account created! Verification email sent.";
-
-          user.sendEmailVerification()
-            .then(() => console.log("Verification email sent"))
-            .catch(err => console.error("Email error:", err));
-
-          // ✅ Redirect after short delay
-          console.log("Redirecting to dashboard...");
-          setTimeout(() => {
-            window.location.href = "https://your-username.github.io/your-repo-name/dashboard.html";
-          }, 2000);
-        })
-        .catch(error => {
-          messageBox.style.color = "red";
-          messageBox.textContent = error.message;
-          console.error("Signup error:", error);
-        });
     });
+
+    // ✅ Handle signup
+    document.getElementById("signupBtn").addEventListener("click", () => {
+      auth.signInWithRedirect(provider);
+    });
+
+    // ✅ Handle redirect result
+    auth.getRedirectResult()
+      .then((result) => {
+        if (result.user) {
+          window.location.href = "https://tate-costa.github.io/EX_site/dashboard.html";
+        }
+      })
+      .catch((error) => {
+        console.error("Redirect error:", error);
+        alert("Signup failed. Please try again.");
+      });
   </script>
 </body>
 </html>
