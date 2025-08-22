@@ -3,34 +3,152 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dashboard</title>
+  <title>Gymnastics Skill Tracker</title>
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-auth-compat.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 2rem;
+      background-color: #f4f4f4;
+    }
+    h1, h2 {
+      color: #333;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 2rem;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 0.5rem;
+      text-align: center;
+    }
+    input[type="number"] {
+      width: 60px;
+    }
+    .average {
+      font-weight: bold;
+      color: #0077cc;
+    }
+    #logoutBtn {
+      margin-top: 1rem;
+      display: inline-block;
+      padding: 0.5rem 1rem;
+      background-color: #0077cc;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+  </style>
 </head>
 <body>
-  <h1 id="welcomeMessage">Checking login status...</h1>
+  <h1 id="welcomeMessage">Loading dashboard...</h1>
+
+  <h2>Enter Skill Scores for Each Event</h2>
+  <table id="skillTable">
+    <thead>
+      <tr>
+        <th>Skill</th>
+        <th>Floor</th>
+        <th>Vault</th>
+        <th>Bars</th>
+        <th>Beam</th>
+        <th>Rings</th>
+        <th>Pommel</th>
+        <th>Average</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Rows will be dynamically generated -->
+    </tbody>
+  </table>
+
+  <button id="logoutBtn">Log Out</button>
 
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyD3cJtk0c42pNAr3tsi_gQ7_9KcQS-HvgA",
       authDomain: "extracker-d2148.firebaseapp.com",
       projectId: "extracker-d2148",
-      appId: "1:123456789012:web:abcdef123456" // Replace with your actual App ID
+      appId: "1:123456789012:web:abcdef123456"
     };
 
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
 
     auth.onAuthStateChanged((user) => {
+      const welcomeEl = document.getElementById("welcomeMessage");
       if (user) {
-        document.getElementById("welcomeMessage").textContent = `Welcome, ${user.displayName || user.email}`;
-        setTimeout(() => {
-          window.location.href = "https://tate-costa.github.io/EX_site/index.html";
-        }, 1500);
+        welcomeEl.textContent = `Welcome, ${user.displayName || user.email}`;
       } else {
         window.location.href = "signup.html";
       }
     });
+
+    document.getElementById("logoutBtn").addEventListener("click", () => {
+      auth.signOut().then(() => {
+        window.location.href = "signup.html";
+      });
+    });
+
+    // 🧠 Skill and Event Setup
+    const skills = ["Strength", "Flexibility", "Balance", "Coordination", "Endurance", "Technique"];
+    const events = ["Floor", "Vault", "Bars", "Beam", "Rings", "Pommel"];
+    const tbody = document.querySelector("#skillTable tbody");
+
+    skills.forEach((skill, skillIndex) => {
+      const row = document.createElement("tr");
+      const skillCell = document.createElement("td");
+      skillCell.textContent = skill;
+      row.appendChild(skillCell);
+
+      let inputs = [];
+
+      events.forEach((event, eventIndex) => {
+        const cell = document.createElement("td");
+        const input = document.createElement("input");
+        input.type = "number";
+        input.min = "0";
+        input.max = "10";
+        input.step = "0.1";
+        input.addEventListener("input", () => calculateAverage(skillIndex));
+        inputs.push(input);
+        cell.appendChild(input);
+        row.appendChild(cell);
+      });
+
+      const avgCell = document.createElement("td");
+      avgCell.className = "average";
+      avgCell.textContent = "0.0";
+      row.appendChild(avgCell);
+
+      tbody.appendChild(row);
+      row.dataset.inputs = JSON.stringify(inputs.map((input) => input));
+      row.dataset.avgCell = avgCell;
+    });
+
+    function calculateAverage(skillIndex) {
+      const row = tbody.children[skillIndex];
+      const inputs = JSON.parse(row.dataset.inputs).map(id => document.querySelector(`[data-input-id="${id}"]`) || id);
+      const avgCell = row.dataset.avgCell;
+
+      let total = 0;
+      let count = 0;
+
+      inputs.forEach(input => {
+        const val = parseFloat(input.value);
+        if (!isNaN(val)) {
+          total += val;
+          count++;
+        }
+      });
+
+      const average = count > 0 ? (total / count).toFixed(2) : "0.0";
+      row.lastChild.textContent = average;
+    }
   </script>
 </body>
 </html>
