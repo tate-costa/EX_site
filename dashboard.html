@@ -6,10 +6,13 @@
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js"></script>
   <style>
-    body { font-family: Arial; padding: 20px; }
-    .event-panel { margin-bottom: 30px; border: 1px solid #ccc; padding: 15px; }
-    .submitBtn { margin-top: 10px; }
+    body { font-family: Arial; padding: 20px; background-color: #f9f9f9; }
+    .event-panel { margin-bottom: 30px; border: 1px solid #ccc; padding: 15px; border-radius: 6px; background: #fff; }
+    .submitBtn { margin-top: 10px; padding: 8px 16px; background-color: #0077cc; color: white; border: none; border-radius: 4px; cursor: pointer; }
     .submitStatus { font-style: italic; color: green; margin-top: 5px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+    input[type="text"], input[type="number"] { width: 90%; padding: 4px; }
   </style>
 </head>
 <body>
@@ -19,11 +22,14 @@
   <script>
     // 🔥 Firebase config
     const firebaseConfig = {
-      apiKey: "YOUR_API_KEY",
-      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-      projectId: "YOUR_PROJECT_ID"
+      apiKey: "AIzaSyD3cJtk0c42pNAr3tsi_gQ7_9KcQS-HvgA",
+      authDomain: "extracker-d2148.firebaseapp.com",
+      projectId: "extracker-d2148"
     };
     firebase.initializeApp(firebaseConfig);
+
+    // 📤 Backend URL
+    const scriptURL = "https://script.google.com/macros/s/AKfycbxsVJbFDp15cuOjO20qC30IQ5OPnLhAn02t7yMzusZixDJuZEJy2J_yK_AmoVTIQanA/exec";
 
     // 🔐 Capture user info
     firebase.auth().onAuthStateChanged(user => {
@@ -34,15 +40,12 @@
         };
         buildDashboard();
       } else {
-        window.location.href = "login.html";
+        window.location.href = "signup.html"; // or login.html
       }
     });
 
     // 🧱 Event list
-    const events = ["Vault", "Bars", "Beam", "Floor"];
-
-    // 📤 Backend URL
-    const scriptURL = "https://script.google.com/macros/s/AKfycbxsVJbFDp15cuOjO20qC30IQ5OPnLhAn02t7yMzusZixDJuZEJy2J_yK_AmoVTIQanA/exec";
+    const events = ["FX", "PH", "SR", "VT", "PB", "HB"];
 
     function buildDashboard() {
       const container = document.getElementById("dashboard");
@@ -52,7 +55,7 @@
         panel.className = "event-panel";
 
         const title = document.createElement("h2");
-        title.textContent = event;
+        title.textContent = `Event: ${event}`;
         panel.appendChild(title);
 
         const table = document.createElement("table");
@@ -61,14 +64,12 @@
             <tr><th>Skill</th><th>Score</th></tr>
           </thead>
           <tbody>
-            <tr>
-              <td><input type="text" placeholder="Skill name"></td>
-              <td><input type="number" placeholder="Score" step="0.1" min="0" max="10"></td>
-            </tr>
-            <tr>
-              <td><input type="text" placeholder="Skill name"></td>
-              <td><input type="number" placeholder="Score" step="0.1" min="0" max="10"></td>
-            </tr>
+            ${Array.from({ length: 6 }).map(() => `
+              <tr>
+                <td><input type="text" placeholder="Skill name"></td>
+                <td><input type="number" placeholder="Score" step="0.1" min="0" max="10"></td>
+              </tr>
+            `).join('')}
           </tbody>
         `;
         panel.appendChild(table);
@@ -85,4 +86,49 @@
           const skills = [];
 
           rows.forEach(row => {
-            const name = row.querySelector("input[type='text']").
+            const name = row.querySelector("input[type='text']").value.trim();
+            const score = parseFloat(row.querySelector("input[type='number']").value);
+            if (name && !isNaN(score)) {
+              skills.push({ name, score });
+            }
+          });
+
+          if (skills.length === 0) {
+            statusMsg.textContent = "Please enter at least one skill and score.";
+            return;
+          }
+
+          if (!window.currentUser) {
+            statusMsg.textContent = "User not authenticated.";
+            return;
+          }
+
+          fetch(scriptURL, {
+            method: "POST",
+            body: JSON.stringify({
+              user: window.currentUser,
+              event: event,
+              skills: skills
+            }),
+            headers: {
+              "Content-Type": "application/json"
+            }
+          })
+          .then(res => res.text())
+          .then(response => {
+            statusMsg.textContent = `✅ Submitted on ${new Date().toLocaleString()}`;
+          })
+          .catch(err => {
+            console.error("Submission error:", err);
+            statusMsg.textContent = "❌ Submission failed. Try again.";
+          });
+        });
+
+        panel.appendChild(submitBtn);
+        panel.appendChild(statusMsg);
+        container.appendChild(panel);
+      });
+    }
+  </script>
+</body>
+</html>
