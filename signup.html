@@ -10,6 +10,7 @@
 <body>
   <h1>Sign Up</h1>
   <button id="signupBtn">Sign up with Google</button>
+  <p id="statusMessage"></p>
 
   <script>
     // ✅ Firebase config
@@ -20,34 +21,30 @@
       appId: "1:123456789012:web:abcdef123456" // Replace with your actual App ID
     };
 
-    // ✅ Initialize Firebase
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const provider = new firebase.auth.GoogleAuthProvider();
+    const statusMessage = document.getElementById("statusMessage");
 
-    // ✅ Redirect returning users
-    auth.onAuthStateChanged((user) => {
-      if (user) {
-        window.location.href = "https://tate-costa.github.io/EX_site/dashboard.html";
-      }
-    });
-
-    // ✅ Handle signup
-    document.getElementById("signupBtn").addEventListener("click", () => {
-      auth.signInWithRedirect(provider);
-    });
-
-    // ✅ Handle redirect result
+    // ✅ Handle redirect result after returning from Google
     auth.getRedirectResult()
       .then((result) => {
         if (result.user) {
-          window.location.href = "https://tate-costa.github.io/EX_site/dashboard.html";
+          statusMessage.textContent = "Signup successful. Redirecting...";
+          setTimeout(() => {
+            window.location.href = "https://tate-costa.github.io/EX_site/dashboard.html";
+          }, 1500);
         }
       })
       .catch((error) => {
         console.error("Redirect error:", error);
-        alert("Signup failed. Please try again.");
+        statusMessage.textContent = "Signup failed. Please try again.";
       });
+
+    // ✅ Trigger Google signup
+    document.getElementById("signupBtn").addEventListener("click", () => {
+      auth.signInWithRedirect(provider);
+    });
   </script>
 </body>
 </html>
