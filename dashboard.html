@@ -23,10 +23,10 @@
   <h1>Welcome to Your Gymnastics Dashboard</h1>
 
   <button id="loginBtn">Sign in with Google</button>
-  <p id="userStatus"></p>
+  <p id="userStatus">Checking login status...</p>
 
   <label for="eventSelect">Select Event:</label>
-  <select id="eventSelect">
+  <select id="eventSelect" disabled>
     <option value="">--Choose an event--</option>
     <option value="FX">FX</option>
     <option value="PH">PH</option>
@@ -64,12 +64,25 @@
 
     let currentUserId = null;
 
-    document.getElementById("loginBtn").addEventListener("click", () => {
-      const provider = new firebase.auth.GoogleAuthProvider();
-      auth.signInWithPopup(provider).then(result => {
-        const user = result.user;
+    // Auth state listener
+    auth.onAuthStateChanged(user => {
+      if (user) {
         currentUserId = user.uid;
         document.getElementById("userStatus").textContent = `Logged in as: ${user.displayName || user.email}`;
+        document.getElementById("loginBtn").style.display = "none";
+        document.getElementById("eventSelect").disabled = false;
+      } else {
+        document.getElementById("userStatus").textContent = "Not signed in";
+        document.getElementById("loginBtn").style.display = "inline-block";
+        document.getElementById("eventSelect").disabled = true;
+      }
+    });
+
+    // Login button
+    document.getElementById("loginBtn").addEventListener("click", () => {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      auth.signInWithPopup(provider).catch(error => {
+        console.error("Login error:", error);
       });
     });
 
@@ -84,4 +97,43 @@
 
       const table = document.createElement("table");
       table.innerHTML = `
-        <thead><tr><th>Skill</th><th>Value
+        <thead><tr><th>Skill</th><th>Value</th><th>Deduction</th><th>Submit</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><input type="text" id="skillInput"></td>
+            <td><input type="number" id="valueInput"></td>
+            <td><input type="number" id="deductionInput"></td>
+            <td><button class="submitBtn" id="submitBtn">Submit</button></td>
+          </tr>
+        </tbody>
+      `;
+      eventForm.appendChild(table);
+
+      document.getElementById("submitBtn").addEventListener("click", () => {
+        const skill = document.getElementById("skillInput").value;
+        const value = parseFloat(document.getElementById("valueInput").value);
+        const deduction = parseFloat(document.getElementById("deductionInput").value);
+        const timestamp = new Date().toISOString();
+
+        if (!currentUserId) return alert("Please sign in first");
+
+        db.collection("submissions").add({
+          userId: currentUserId,
+          event: selectedEvent,
+          skill,
+          value,
+          deduction,
+          timestamp
+        }).then(() => {
+          const status = document.createElement("p");
+          status.className = "submitStatus";
+          status.textContent = "✅ Submitted!";
+          eventForm.appendChild(status);
+        }).catch(err => {
+          console.error("Submission error:", err);
+        });
+      });
+    });
+  </script>
+</body>
+</html>
