@@ -124,7 +124,7 @@
         const deductionInputs = Array.from(document.querySelectorAll(".deductionInput"));
 
         const timestamp = new Date().toISOString();
-        let foundValidRow = false;
+        let totalValid = 0;
         let submittedCount = 0;
 
         skillInputs.forEach((input, i) => {
@@ -134,7 +134,7 @@
 
           if (!skill || isNaN(value) || isNaN(deduction)) return;
 
-          foundValidRow = true;
+          totalValid++;
 
           db.collection("submissions").add({
             userId: currentUserId,
@@ -145,7 +145,7 @@
             timestamp
           }).then(() => {
             submittedCount++;
-            if (submittedCount === skillInputs.length) {
+            if (submittedCount === totalValid) {
               const status = document.createElement("p");
               status.className = "submitStatus";
               status.textContent = `✅ Submitted ${submittedCount} rows successfully!`;
@@ -153,10 +153,15 @@
             }
           }).catch(err => {
             console.error("Submission error:", err);
+            const status = document.createElement("p");
+            status.className = "submitStatus";
+            status.style.color = "red";
+            status.textContent = "❌ Submission failed. Check console for details.";
+            eventForm.appendChild(status);
           });
         });
 
-        if (!foundValidRow) {
+        if (totalValid === 0) {
           const status = document.createElement("p");
           status.className = "submitStatus";
           status.style.color = "red";
