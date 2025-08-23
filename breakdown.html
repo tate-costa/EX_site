@@ -2,45 +2,116 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Your Submission Breakdown</title>
+  <title>Submission Breakdown</title>
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-firestore-compat.js"></script>
   <style>
-    body { font-family: Arial; padding: 20px; background-color: #f4f4f4; }
-    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-    th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
-    h1 { margin-bottom: 10px; }
-    .submitBtn { margin-top: 10px; padding: 8px 16px; background-color: #cc0000; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    body { font-family: Arial; padding: 20px; background: #f4f4f4; }
+    h2 { margin-top: 30px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+    .summary { font-weight: bold; background: #e0f7fa; }
+    #exportBtn {
+      margin-top: 20px; padding: 8px 16px;
+      background-color: #0077cc; color: white;
+      border: none; border-radius: 4px; cursor: pointer;
+    }
   </style>
 </head>
 <body>
   <h1>Your Submission Breakdown</h1>
-  <div id="filters">
-    <label>Event:
-      <select id="filterEvent">
-        <option value="">All</option>
-        <option value="FX">FX</option>
-        <option value="PH">PH</option>
-        <option value="SR">SR</option>
-        <option value="VT">VT</option>
-        <option value="PB">PB</option>
-        <option value="HB">HB</option>
-      </select>
-    </label>
-    <label>Date From: <input type="date" id="dateFrom"></label>
-    <label>Date To: <input type="date" id="dateTo"></label>
-    <button id="applyFilters">Apply Filters</button>
-    <button id="editToggle">Edit</button>
-  </div>
-
-  <p id="status">Loading your data...</p>
-  <table id="breakdownTable" style="display:none;">
-    <thead>
-      <tr><th>Timestamp</th><th>Event</th><th>Skill</th><th>Value</th><th>Deduction</th><th class="editCol" style="display:none;">Select</th></tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+  <div id="breakdownContainer"></div>
+  <button id="exportBtn">Export to CSV</button>
 
   <script>
     const firebaseConfig = {
-      apiKey: "AIzaSyD3cJtk0c42pNAr3tsi_gQ
+      apiKey: "AIzaSyD3cJtk0c42pNAr3tsi_gQ7_9KcQS-HvgA",
+      authDomain: "extracker-d2148.firebaseapp.com",
+      projectId: "extracker-d2148",
+      appId: "1:123456789012:web:abcdef123456"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    const userId = localStorage.getItem("userId");
+    if (!userId) {
+      document.body.innerHTML = "<p>Please sign in via dashboard first.</p>";
+      throw new Error("Missing userId");
+    }
+
+    db.collection("submissions")
+      .where("userId", "==", userId)
+      .orderBy("timestamp", "desc")
+      .get()
+      .then(snapshot => {
+        const data = {};
+        snapshot.forEach(doc => {
+          const entry = doc.data();
+          const { event, skill, value, deduction } = entry;
+          if (!data[event]) data[event] = [];
+          data[event].push({ skill, value, deduction });
+        });
+
+        const container = document.getElementById("breakdownContainer");
+        let csvRows = [["Event","Skill","Value","Deduction"]];
+
+        Object.entries(data).forEach(([event, entries]) => {
+          const section = document.createElement("div");
+          section.innerHTML = `<h2>${event}</h2>`;
+          const table = document.createElement("table");
+          table.innerHTML = `
+            <thead><tr><th>Skill</th><th>Value</th><th>Deduction</th><th>Net</th></tr></thead>
+            <tbody></tbody>
+          `;
+          const tbody = table.querySelector("tbody");
+
+          let totalValue = 0, totalDeduction = 0;
+
+          entries.forEach(({ skill, value, deduction }) => {
+            const net = value - deduction;
+            totalValue += value;
+            totalDeduction += deduction;
+            const row = document.createElement("tr");
+            row.innerHTML = `
+              <td>${skill}</td>
+              <td>${value.toFixed(2)}</td>
+              <td>${deduction.toFixed(2)}</td>
+              <td>${net.toFixed(2)}</td>
+            `;
+            tbody.appendChild(row);
+            csvRows.push([event, skill, value, deduction]);
+          });
+
+          const summaryRow = document.createElement("tr");
+          summaryRow.className = "summary";
+          summaryRow.innerHTML = `
+            <td>Total</td>
+            <td>${totalValue.toFixed(2)}</td>
+            <td>${totalDeduction.toFixed(2)}</td>
+            <td>${(totalValue - totalDeduction).toFixed(2)}</td>
+          `;
+          tbody.appendChild(summaryRow);
+
+          section.appendChild(table);
+          container.appendChild(section);
+        });
+
+        document.getElementById("exportBtn").addEventListener("click", () => {
+          const csvContent = "data:text/csv;charset=utf-8," + csvRows.map(r => r.join(",")).join("\n");
+          const encodedUri = encodeURI(csvContent);
+          const link = document.createElement("a");
+          link.setAttribute("href", encodedUri);
+          link.setAttribute("download", "submission_breakdown.csv");
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        });
+      })
+      .catch(err => {
+        console.error("Error loading breakdown:", err);
+        document.getElementById("breakdownContainer").innerHTML = "<p>Failed to load data.</p>";
+      });
+  </script>
+</body>
+</html>
