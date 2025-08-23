@@ -5,7 +5,6 @@
   <title>Gymnastics Dashboard</title>
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-firestore-compat.js"></script>
   <style>
     body { font-family: Arial; padding: 20px; background: #f9f9f9; }
     .panel { margin-bottom: 30px; border: 1px solid #ccc; border-radius: 6px; background: #fff; }
@@ -31,15 +30,14 @@
 
   <script>
     const firebaseConfig = {
-      apiKey: "AIzaSyD3cJtk0c42pNAr3tsi_gQ7_9KcQS-HvgA",
-      authDomain: "extracker-d2148.firebaseapp.com",
-      projectId: "extracker-d2148",
-      appId: "1:123456789012:web:abcdef123456" // Replace with your actual App ID
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT.firebaseapp.com",
+      projectId: "YOUR_PROJECT_ID",
+      appId: "YOUR_APP_ID"
     };
 
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
-    const db = firebase.firestore();
 
     let currentUserId = null;
 
@@ -61,6 +59,16 @@
       const provider = new firebase.auth.GoogleAuthProvider();
       auth.signInWithPopup(provider).catch(console.error);
     });
+
+    function getUserSubmissions() {
+      const key = `submissions-${currentUserId}`;
+      return JSON.parse(localStorage.getItem(key)) || [];
+    }
+
+    function saveUserSubmissions(data) {
+      const key = `submissions-${currentUserId}`;
+      localStorage.setItem(key, JSON.stringify(data));
+    }
 
     function renderPanels() {
       const events = { FX: 8, PH: 8, SR: 8, PB: 8, HB: 8, VT: 3 };
@@ -114,7 +122,7 @@
 
           const timestamp = new Date().toISOString();
           let totalValid = 0;
-          let submittedCount = 0;
+          let newEntries = [];
 
           skillInputs.forEach((input, i) => {
             const skill = input.value.trim();
@@ -124,34 +132,23 @@
             if (!skill || isNaN(value) || isNaN(deduction)) return;
 
             totalValid++;
-
-            db.collection("submissions").add({
-              userId: currentUserId,
-              event,
-              skill,
-              value,
-              deduction,
-              timestamp
-            }).then(() => {
-              submittedCount++;
-              if (submittedCount === totalValid) {
-                statusMsg.textContent = `✅ Submitted ${submittedCount} rows for ${event}`;
-                skillInputs.forEach(input => input.value = "");
-                valueInputs.forEach(input => input.value = "");
-                deductionInputs.forEach(input => input.value = "");
-                loadBreakdown(event, breakdownDiv);
-              }
-            }).catch(err => {
-              console.error("Submission error:", err);
-              statusMsg.textContent = "❌ Submission failed. Check console.";
-              statusMsg.style.color = "red";
-            });
+            newEntries.push({ event, skill, value, deduction, timestamp });
           });
 
           if (totalValid === 0) {
             statusMsg.textContent = "⚠️ No valid rows to submit.";
             statusMsg.style.color = "red";
+            return;
           }
+
+          const allData = getUserSubmissions();
+          saveUserSubmissions([...allData, ...newEntries]);
+
+          statusMsg.textContent = `✅ Submitted ${totalValid} rows for ${event}`;
+          skillInputs.forEach(input => input.value = "");
+          valueInputs.forEach(input => input.value = "");
+          deductionInputs.forEach(input => input.value = "");
+          loadBreakdown(event, breakdownDiv);
         });
 
         body.appendChild(table);
@@ -168,61 +165,49 @@
     }
 
     function loadBreakdown(event, container) {
-      db.collection("submissions")
-        .where("userId", "==", currentUserId)
-        .where("event", "==", event)
-        .orderBy("timestamp", "desc")
-        .get()
-        .then(snapshot => {
-          container.innerHTML = `<h3>${event} Breakdown</h3>`;
-          if (snapshot.empty) {
-            container.innerHTML += "<p>No submissions yet.</p>";
-            return;
-          }
+      const data = getUserSubmissions().filter(entry => entry.event === event);
+      container.innerHTML = `<h3>${event} Breakdown</h3>`;
+      if (data.length === 0) {
+        container.innerHTML += "<p>No submissions yet.</p>";
+        return;
+      }
 
-          const table = document.createElement("table");
-          table.innerHTML = `
-            <thead><tr><th>Skill</th><th>Value</th><th>Deduction</th><th>Net</th></tr></thead>
-            <tbody></tbody>
-          `;
-          const tbody = table.querySelector("tbody");
+      const table = document.createElement("table");
+      table.innerHTML = `
+        <thead><tr><th>Skill</th><th>Value</th><th>Deduction</th><th>Net</th></tr></thead>
+        <tbody></tbody>
+      `;
+      const tbody = table.querySelector("tbody");
 
-          let totalValue = 0, totalDeduction = 0;
+      let totalValue = 0, totalDeduction = 0;
 
-          snapshot.forEach(doc => {
-            const { skill, value, deduction } = doc.data();
-            const net = value - deduction;
-            totalValue += value;
-            totalDeduction += deduction;
+      data.forEach(({ skill, value, deduction }) => {
+        const net = value - deduction;
+        totalValue += value;
+        totalDeduction += deduction;
 
-            const row = document.createElement("tr");
-            row.innerHTML = `
-              <td>${skill}</td>
-              <td>${value.toFixed(2)}</td>
-              <td>${deduction.toFixed(2)}</td>
-              <td>${net.toFixed(2)}</td>
-            `;
-            tbody.appendChild(row);
-          });
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${skill}</td>
+          <td>${value.toFixed(2)}</td>
+          <td>${deduction.toFixed(2)}</td>
+          <td>${net.toFixed(2)}</td>
+        `;
+        tbody.appendChild(row);
+      });
 
-          const summaryRow = document.createElement("tr");
-          summaryRow.className = "summary";
-          summaryRow.innerHTML = `
-            <td>Total</td>
-            <td>${totalValue.toFixed(2)}</td>
-            <td>${totalDeduction.toFixed(2)}</td>
-            <td>${(totalValue - totalDeduction).toFixed(2)}</td>
-          `;
-          tbody.appendChild(summaryRow);
+      const summaryRow = document.createElement("tr");
+      summaryRow.className = "summary";
+      summaryRow.innerHTML = `
+        <td>Total</td>
+        <td>${totalValue.toFixed(2)}</td>
+        <td>${totalDeduction.toFixed(2)}</td>
+        <td>${(totalValue - totalDeduction).toFixed(2)}</td>
+      `;
+      tbody.appendChild(summaryRow);
 
-          container.appendChild(table);
-        })
-        .catch(err => {
-          console.error("Breakdown load error:", err);
-          container.innerHTML = "<p>Failed to load breakdown.</p>";
-        });
+      container.appendChild(table);
     }
   </script>
 </body>
 </html>
-``
