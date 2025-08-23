@@ -1,154 +1,82 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Gymnastics Dashboard</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EX Tracker - Home</title>
+
+  <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-firestore-compat.js"></script>
+
   <style>
-    body { font-family: Arial; padding: 20px; background-color: #f4f4f4; }
-    .event-panel, #dataBreakdown { margin-bottom: 30px; border: 1px solid #ccc; padding: 15px; border-radius: 6px; background: #fff; }
-    .submitBtn, #downloadBtn, #loginBtn { margin-top: 10px; padding: 8px 16px; background-color: #0077cc; color: white; border: none; border-radius: 4px; cursor: pointer; }
-    .submitStatus { font-style: italic; color: green; margin-top: 5px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
-    input[type="text"], input[type="number"] { width: 90%; padding: 4px; }
+    body {
+      font-family: Arial, sans-serif;
+      padding: 2rem;
+      background-color: #f4f4f4;
+    }
+    #welcomeUser {
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
+    }
+    #loginBtn {
+      padding: 8px 16px;
+      background-color: #0077cc;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
-  <h1>Welcome to Your Gymnastics Dashboard</h1>
-
+  <h1 id="welcomeUser">Loading...</h1>
   <button id="loginBtn">Sign in with Google</button>
-  <p id="userStatus"></p>
 
-  <label for="eventSelect">Select Event:</label>
-  <select id="eventSelect">
-    <option value="">--Choose an event--</option>
-    <option value="FX">FX</option>
-    <option value="PH">PH</option>
-    <option value="SR">SR</option>
-    <option value="VT">VT</option>
-    <option value="PB">PB</option>
-    <option value="HB">HB</option>
-  </select>
-
-  <div id="eventForm"></div>
-
-  <h2>📊 Data Breakdown</h2>
-  <div id="dataBreakdown">
-    <table>
-      <thead>
-        <tr><th>Timestamp</th><th>Event</th><th>Skill</th><th>Value</th><th>Deduction</th></tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-    <button id="downloadBtn">Download Data</button>
-  </div>
+  <p>This is your landing hub. From here, you can navigate to your dashboard, manage events, or explore new features.</p>
+  <nav>
+    <ul>
+      <li><a href="dashboard.html">Go to Dashboard</a></li>
+      <li><a href="signup.html">Sign Up / Log In</a></li>
+    </ul>
+  </nav>
 
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyD3cJtk0c42pNAr3tsi_gQ7_9KcQS-HvgA",
       authDomain: "extracker-d2148.firebaseapp.com",
       projectId: "extracker-d2148",
-      appId: "1:123456789012:web:abcdef123456"
+      appId: "1:123456789012:web:abcdef123456" // Replace with your actual App ID
     };
 
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
-    const db = firebase.firestore();
 
-    let currentUserId = null;
+    const welcomeEl = document.getElementById("welcomeUser");
+    const loginBtn = document.getElementById("loginBtn");
 
-    document.getElementById("loginBtn").addEventListener("click", () => {
+    auth.onAuthStateChanged((user) => {
+      if (user) {
+        localStorage.setItem("userId", user.uid);
+        welcomeEl.textContent = `Welcome back, ${user.displayName || user.email}`;
+        window.location.href = "dashboard.html"; // Auto-redirect
+      } else {
+        localStorage.removeItem("userId");
+        welcomeEl.textContent = "Welcome, guest! Please sign in to access your dashboard.";
+      }
+    });
+
+    loginBtn.addEventListener("click", () => {
       const provider = new firebase.auth.GoogleAuthProvider();
       auth.signInWithPopup(provider).then(result => {
         const user = result.user;
-        currentUserId = user.uid;
-        document.getElementById("userStatus").textContent = `Logged in as: ${user.displayName || user.email}`;
+        localStorage.setItem("userId", user.uid);
+        welcomeEl.textContent = `Welcome, ${user.displayName || user.email}`;
+        window.location.href = "dashboard.html";
+      }).catch(error => {
+        console.error("Login failed:", error);
+        welcomeEl.textContent = "Login failed. Please try again.";
       });
-    });
-
-    const eventSelect = document.getElementById("eventSelect");
-    const eventForm = document.getElementById("eventForm");
-    const breakdownBody = document.querySelector("#dataBreakdown tbody");
-
-    eventSelect.addEventListener("change", () => {
-      const selectedEvent = eventSelect.value;
-      eventForm.innerHTML = "";
-      if (!selectedEvent) return;
-
-      const table = document.createElement("table");
-      table.innerHTML = `
-        <thead>
-          <tr><th>Skill</th><th>Value</th><th>Deduction</th></tr>
-        </thead>
-        <tbody>
-          ${Array.from({ length: 8 }).map(() => `
-            <tr>
-              <td><input type="text" placeholder="Skill name"></td>
-              <td><input type="number" placeholder="Value" step="0.1" min="0"></td>
-              <td><input type="number" placeholder="Deduction" step="0.1" min="0"></td>
-            </tr>
-          `).join('')}
-        </tbody>
-      `;
-      eventForm.appendChild(table);
-
-      const submitBtn = document.createElement("button");
-      submitBtn.className = "submitBtn";
-      submitBtn.textContent = "Submit Scores";
-
-      const statusMsg = document.createElement("p");
-      statusMsg.className = "submitStatus";
-
-      submitBtn.addEventListener("click", () => {
-        const rows = table.querySelectorAll("tbody tr");
-        const timestamp = new Date().toLocaleString();
-        let valid = false;
-
-        rows.forEach(row => {
-          const name = row.querySelector("input[type='text']").value.trim();
-          const value = parseFloat(row.querySelector("input[placeholder='Value']").value);
-          const deduction = parseFloat(row.querySelector("input[placeholder='Deduction']").value);
-          if (name && !isNaN(value) && !isNaN(deduction)) {
-            valid = true;
-            const tr = document.createElement("tr");
-            tr.innerHTML = `<td>${timestamp}</td><td>${selectedEvent}</td><td>${name}</td><td>${value}</td><td>${deduction}</td>`;
-            breakdownBody.appendChild(tr);
-
-            if (currentUserId) {
-              db.collection("gymData").doc(currentUserId).collection("entries").add({
-                timestamp,
-                event: selectedEvent,
-                skill: name,
-                value,
-                deduction
-              });
-            }
-          }
-        });
-
-        statusMsg.textContent = valid ? `✅ Submitted on ${timestamp}` : "Please enter at least one complete skill entry.";
-      });
-
-      eventForm.appendChild(submitBtn);
-      eventForm.appendChild(statusMsg);
-    });
-
-    document.getElementById("downloadBtn").addEventListener("click", () => {
-      const rows = Array.from(document.querySelectorAll("#dataBreakdown tbody tr"));
-      const csv = rows.map(row =>
-        Array.from(row.children).map(cell => `"${cell.textContent}"`).join(",")
-      ).join("\n");
-
-      const blob = new Blob([csv], { type: "text/csv" });
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.download = "gymnastics_data.csv";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
     });
   </script>
 </body>
