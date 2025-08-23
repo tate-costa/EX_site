@@ -5,16 +5,32 @@
   <title>Gymnastics Dashboard</title>
   <style>
     body { font-family: Arial; padding: 20px; background-color: #f4f4f4; }
-    select, input[type="text"], input[type="number"] { padding: 6px; margin: 4px; }
-    .submitBtn, #downloadBtn, #clearBtn { margin-top: 10px; padding: 8px 16px; background-color: #0077cc; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    .submitBtn, #breakdownBtn { margin-top: 10px; padding: 8px 16px; background-color: #0077cc; color: white; border: none; border-radius: 4px; cursor: pointer; }
     .submitStatus { font-style: italic; color: green; margin-top: 5px; }
     table { width: 100%; border-collapse: collapse; margin-top: 10px; }
     th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
-    #eventForm, #dataBreakdown { margin-top: 20px; background: #fff; padding: 15px; border-radius: 6px; box-shadow: 0 0 5px rgba(0,0,0,0.1); }
+    input[type="text"], input[type="number"] { width: 90%; padding: 4px; }
   </style>
+  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-firestore.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_AUTH_DOMAIN",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_STORAGE_BUCKET",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+  </script>
 </head>
 <body>
   <h1>Gymnastics Dashboard</h1>
+
+  <label for="userId">User ID:</label>
+  <input type="text" id="userId" placeholder="Enter your user ID">
 
   <label for="eventSelect">Select Event:</label>
   <select id="eventSelect">
@@ -28,32 +44,21 @@
   </select>
 
   <div id="eventForm"></div>
-
-  <h2>📊 Data Breakdown</h2>
-  <div id="dataBreakdown">
-    <table>
-      <thead>
-        <tr><th>Timestamp</th><th>Event</th><th>Skill</th><th>Value</th><th>Deduction</th></tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-    <button id="downloadBtn">Download CSV</button>
-    <button id="clearBtn">Clear All Data</button>
-  </div>
+  <button id="breakdownBtn">See Breakdown</button>
 
   <script>
+    const userIdInput = document.getElementById("userId");
     const eventSelect = document.getElementById("eventSelect");
     const eventForm = document.getElementById("eventForm");
-    const breakdownBody = document.querySelector("#dataBreakdown tbody");
+    const breakdownBtn = document.getElementById("breakdownBtn");
 
-    // Load saved data on page load
-    window.addEventListener("DOMContentLoaded", () => {
-      const saved = JSON.parse(localStorage.getItem("gymData") || "[]");
-      saved.forEach(entry => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `<td>${entry.timestamp}</td><td>${entry.event}</td><td>${entry.skill}</td><td>${entry.value}</td><td>${entry.deduction}</td>`;
-        breakdownBody.appendChild(tr);
-      });
+    breakdownBtn.addEventListener("click", () => {
+      const userId = userIdInput.value.trim();
+      if (!userId) {
+        alert("Please enter your User ID first.");
+        return;
+      }
+      window.location.href = `breakdown.html?user=${encodeURIComponent(userId)}`;
     });
 
     eventSelect.addEventListener("change", () => {
@@ -63,9 +68,7 @@
 
       const table = document.createElement("table");
       table.innerHTML = `
-        <thead>
-          <tr><th>Skill</th><th>Value</th><th>Deduction</th></tr>
-        </thead>
+        <thead><tr><th>Skill</th><th>Value</th><th>Deduction</th></tr></thead>
         <tbody>
           ${Array.from({ length: 8 }).map(() => `
             <tr>
@@ -86,10 +89,15 @@
       statusMsg.className = "submitStatus";
 
       submitBtn.addEventListener("click", () => {
+        const userId = userIdInput.value.trim();
+        if (!userId) {
+          statusMsg.textContent = "Please enter your User ID.";
+          return;
+        }
+
         const rows = table.querySelectorAll("tbody tr");
         const timestamp = new Date().toLocaleString();
         let valid = false;
-        const saved = JSON.parse(localStorage.getItem("gymData") || "[]");
 
         rows.forEach(row => {
           const name = row.querySelector("input[type='text']").value.trim();
@@ -98,41 +106,15 @@
           if (name && !isNaN(value) && !isNaN(deduction)) {
             valid = true;
             const entry = { timestamp, event: selectedEvent, skill: name, value, deduction };
-            saved.push(entry);
-            const tr = document.createElement("tr");
-            tr.innerHTML = `<td>${timestamp}</td><td>${selectedEvent}</td><td>${name}</td><td>${value}</td><td>${deduction}</td>`;
-            breakdownBody.appendChild(tr);
+            db.collection("gymData").doc(userId).collection("entries").add(entry);
           }
         });
 
-        localStorage.setItem("gymData", JSON.stringify(saved));
         statusMsg.textContent = valid ? `✅ Submitted on ${timestamp}` : "Please enter at least one complete skill entry.";
       });
 
       eventForm.appendChild(submitBtn);
       eventForm.appendChild(statusMsg);
-    });
-
-    document.getElementById("downloadBtn").addEventListener("click", () => {
-      const rows = Array.from(document.querySelectorAll("#dataBreakdown tbody tr"));
-      const csv = rows.map(row =>
-        Array.from(row.children).map(cell => `"${cell.textContent}"`).join(",")
-      ).join("\n");
-
-      const blob = new Blob([csv], { type: "text/csv" });
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.download = "gymnastics_data.csv";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    });
-
-    document.getElementById("clearBtn").addEventListener("click", () => {
-      if (confirm("Are you sure you want to clear all saved data?")) {
-        localStorage.removeItem("gymData");
-        breakdownBody.innerHTML = "";
-      }
     });
   </script>
 </body>
