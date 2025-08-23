@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Data Breakdown</title>
+  <style>
+    body { font-family: Arial; padding: 20px; background-color: #f4f4f4; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+    .deleteBtn { margin-top: 10px; padding: 8px 16px; background-color: #cc0000; color: white; border: none; border-radius: 4px; cursor: pointer; }
+  </style>
+  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-firestore.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_AUTH_DOMAIN",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_STORAGE_BUCKET",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+  </script>
+</head>
+<body>
+  <h1>Your Data Breakdown</h1>
+  <table id="breakdownTable">
+    <thead>
+      <tr>
+        <th>Select</th>
+        <th>Timestamp</th>
+        <th>Event</th>
+        <th>Skill</th>
+        <th>Value</th>
+        <th>Deduction</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+  <button class="deleteBtn" id="deleteSelected">Delete Selected</button>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const userId = urlParams.get('user');
+    const tbody = document.querySelector("#breakdownTable tbody");
+
+    if (!userId) {
+      alert("Missing user ID in URL.");
+    } else {
+      db.collection("gymData").doc(userId).collection("entries").get().then(snapshot => {
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td><input type="checkbox" data-id="${doc.id}"></td>
+            <td>${data.timestamp}</td>
+            <td>${data.event}</td>
+            <td>${data.skill}</td>
+            <td>${data.value}</td>
+            <td>${data.deduction}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      });
+    }
+
+    document.getElementById("deleteSelected").addEventListener("click", () => {
+      const checkboxes = document.querySelectorAll("input[type='checkbox']:checked");
+      checkboxes.forEach(box => {
+        const id = box.getAttribute("data-id");
+        db.collection("gymData").doc(userId).collection("entries").doc(id).delete().then(() => {
+          box.closest("tr").remove();
+        });
+      });
+    });
+  </script>
+</body>
+</html>
