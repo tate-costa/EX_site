@@ -150,6 +150,11 @@
               status.className = "submitStatus";
               status.textContent = `✅ Submitted ${submittedCount} rows successfully!`;
               eventForm.appendChild(status);
+
+              // 🔄 Auto-clear inputs
+              skillInputs.forEach(input => input.value = "");
+              valueInputs.forEach(input => input.value = "");
+              deductionInputs.forEach(input => input.value = "");
             }
           }).catch(err => {
             console.error("Submission error:", err);
