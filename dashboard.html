@@ -3,34 +3,19 @@
 <head>
   <meta charset="UTF-8">
   <title>Gymnastics Dashboard</title>
+  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-firestore-compat.js"></script>
   <style>
     body { font-family: Arial; padding: 20px; background-color: #f4f4f4; }
-    .submitBtn, #breakdownBtn { margin-top: 10px; padding: 8px 16px; background-color: #0077cc; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    .submitBtn, #downloadBtn { margin-top: 10px; padding: 8px 16px; background-color: #0077cc; color: white; border: none; border-radius: 4px; cursor: pointer; }
     .submitStatus { font-style: italic; color: green; margin-top: 5px; }
     table { width: 100%; border-collapse: collapse; margin-top: 10px; }
     th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
     input[type="text"], input[type="number"] { width: 90%; padding: 4px; }
   </style>
-  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-firestore.js"></script>
-  <script>
-    const firebaseConfig = {
-      apiKey: "YOUR_API_KEY",
-      authDomain: "YOUR_AUTH_DOMAIN",
-      projectId: "YOUR_PROJECT_ID",
-      storageBucket: "YOUR_STORAGE_BUCKET",
-      messagingSenderId: "YOUR_SENDER_ID",
-      appId: "YOUR_APP_ID"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-  </script>
 </head>
 <body>
-  <h1>Gymnastics Dashboard</h1>
-
-  <label for="userId">User ID:</label>
-  <input type="text" id="userId" placeholder="Enter your user ID">
+  <h1>Welcome to Your Gymnastics Dashboard</h1>
 
   <label for="eventSelect">Select Event:</label>
   <select id="eventSelect">
@@ -44,22 +29,38 @@
   </select>
 
   <div id="eventForm"></div>
-  <button id="breakdownBtn">See Breakdown</button>
+
+  <h2>📊 Data Breakdown</h2>
+  <div id="dataBreakdown">
+    <table>
+      <thead>
+        <tr><th>Timestamp</th><th>Event</th><th>Skill</th><th>Value</th><th>Deduction</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <button id="downloadBtn">Download Data</button>
+  </div>
 
   <script>
-    const userIdInput = document.getElementById("userId");
+    const firebaseConfig = {
+      apiKey: "AIzaSyD3cJtk0c42pNAr3tsi_gQ7_9KcQS-HvgA",
+      authDomain: "extracker-d2148.firebaseapp.com",
+      projectId: "extracker-d2148",
+      appId: "1:123456789012:web:abcdef123456"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    const currentUserId = localStorage.getItem("userId");
+    if (!currentUserId) {
+      alert("No user logged in. Redirecting to login...");
+      window.location.href = "index.html";
+    }
+
     const eventSelect = document.getElementById("eventSelect");
     const eventForm = document.getElementById("eventForm");
-    const breakdownBtn = document.getElementById("breakdownBtn");
-
-    breakdownBtn.addEventListener("click", () => {
-      const userId = userIdInput.value.trim();
-      if (!userId) {
-        alert("Please enter your User ID first.");
-        return;
-      }
-      window.location.href = `breakdown.html?user=${encodeURIComponent(userId)}`;
-    });
+    const breakdownBody = document.querySelector("#dataBreakdown tbody");
 
     eventSelect.addEventListener("change", () => {
       const selectedEvent = eventSelect.value;
@@ -68,7 +69,9 @@
 
       const table = document.createElement("table");
       table.innerHTML = `
-        <thead><tr><th>Skill</th><th>Value</th><th>Deduction</th></tr></thead>
+        <thead>
+          <tr><th>Skill</th><th>Value</th><th>Deduction</th></tr>
+        </thead>
         <tbody>
           ${Array.from({ length: 8 }).map(() => `
             <tr>
@@ -89,12 +92,6 @@
       statusMsg.className = "submitStatus";
 
       submitBtn.addEventListener("click", () => {
-        const userId = userIdInput.value.trim();
-        if (!userId) {
-          statusMsg.textContent = "Please enter your User ID.";
-          return;
-        }
-
         const rows = table.querySelectorAll("tbody tr");
         const timestamp = new Date().toLocaleString();
         let valid = false;
@@ -105,8 +102,17 @@
           const deduction = parseFloat(row.querySelector("input[placeholder='Deduction']").value);
           if (name && !isNaN(value) && !isNaN(deduction)) {
             valid = true;
-            const entry = { timestamp, event: selectedEvent, skill: name, value, deduction };
-            db.collection("gymData").doc(userId).collection("entries").add(entry);
+            const tr = document.createElement("tr");
+            tr.innerHTML = `<td>${timestamp}</td><td>${selectedEvent}</td><td>${name}</td><td>${value}</td><td>${deduction}</td>`;
+            breakdownBody.appendChild(tr);
+
+            db.collection("gymData").doc(currentUserId).collection("entries").add({
+              timestamp,
+              event: selectedEvent,
+              skill: name,
+              value,
+              deduction
+            });
           }
         });
 
@@ -115,6 +121,21 @@
 
       eventForm.appendChild(submitBtn);
       eventForm.appendChild(statusMsg);
+    });
+
+    document.getElementById("downloadBtn").addEventListener("click", () => {
+      const rows = Array.from(document.querySelectorAll("#dataBreakdown tbody tr"));
+      const csv = rows.map(row =>
+        Array.from(row.children).map(cell => `"${cell.textContent}"`).join(",")
+      ).join("\n");
+
+      const blob = new Blob([csv], { type: "text/csv" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "gymnastics_data.csv";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     });
   </script>
 </body>
