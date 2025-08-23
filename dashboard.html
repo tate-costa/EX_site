@@ -8,7 +8,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-firestore-compat.js"></script>
   <style>
     body { font-family: Arial; padding: 20px; background-color: #f4f4f4; }
-    .submitBtn, #downloadBtn, #loginBtn, #seeBreakdownBtn {
+    .submitBtn, #loginBtn, #seeBreakdownBtn {
       margin-top: 10px; padding: 8px 16px;
       background-color: #0077cc; color: white;
       border: none; border-radius: 4px; cursor: pointer;
@@ -21,8 +21,7 @@
 </head>
 <body>
   <h1>Welcome to Your Gymnastics Dashboard</h1>
-
-  <button id="loginBtn" style="display: none;">Sign in with Google</button>
+  <button id="loginBtn" style="display:none;">Sign in with Google</button>
   <p id="userStatus">Checking login status...</p>
 
   <label for="eventSelect">Select Event:</label>
@@ -37,8 +36,6 @@
   </select>
 
   <div id="eventForm"></div>
-
-  <h2>📊 Data Breakdown</h2>
   <button id="seeBreakdownBtn">See Breakdown</button>
 
   <script>
@@ -70,9 +67,7 @@
 
     document.getElementById("loginBtn").addEventListener("click", () => {
       const provider = new firebase.auth.GoogleAuthProvider();
-      auth.signInWithPopup(provider).catch(error => {
-        console.error("Login error:", error);
-      });
+      auth.signInWithPopup(provider).catch(console.error);
     });
 
     document.getElementById("seeBreakdownBtn").addEventListener("click", () => {
@@ -119,9 +114,9 @@
       submitAllBtn.addEventListener("click", () => {
         if (!currentUserId) return alert("Please sign in first");
 
-        const skills = Array.from(document.querySelectorAll(".skillInput")).map(input => input.value.trim());
-        const values = Array.from(document.querySelectorAll(".valueInput")).map(input => parseFloat(input.value));
-        const deductions = Array.from(document.querySelectorAll(".deductionInput")).map(input => parseFloat(input.value));
+        const skills = Array.from(document.querySelectorAll(".skillInput")).map(i => i.value.trim());
+        const values = Array.from(document.querySelectorAll(".valueInput")).map(i => parseFloat(i.value));
+        const deductions = Array.from(document.querySelectorAll(".deductionInput")).map(i => parseFloat(i.value));
         const timestamp = new Date().toISOString();
 
         let submittedCount = 0;
@@ -144,9 +139,7 @@
               status.textContent = `✅ All ${submittedCount} rows submitted!`;
               eventForm.appendChild(status);
             }
-          }).catch(err => {
-            console.error("Submission error:", err);
-          });
+          }).catch(console.error);
         });
       });
     });
