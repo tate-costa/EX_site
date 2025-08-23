@@ -52,6 +52,8 @@
 
     let currentUserId = null;
 
+    auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(console.error);
+
     auth.onAuthStateChanged(user => {
       if (user) {
         currentUserId = user.uid;
@@ -112,35 +114,52 @@
       eventForm.appendChild(submitAllBtn);
 
       submitAllBtn.addEventListener("click", () => {
-        if (!currentUserId) return alert("Please sign in first");
+        if (!currentUserId) {
+          alert("Please sign in first");
+          return;
+        }
 
-        const skills = Array.from(document.querySelectorAll(".skillInput")).map(i => i.value.trim());
-        const values = Array.from(document.querySelectorAll(".valueInput")).map(i => parseFloat(i.value));
-        const deductions = Array.from(document.querySelectorAll(".deductionInput")).map(i => parseFloat(i.value));
+        const skillInputs = Array.from(document.querySelectorAll(".skillInput"));
+        const valueInputs = Array.from(document.querySelectorAll(".valueInput"));
+        const deductionInputs = Array.from(document.querySelectorAll(".deductionInput"));
+
         const timestamp = new Date().toISOString();
+        let validRows = 0;
 
-        let submittedCount = 0;
+        skillInputs.forEach((input, i) => {
+          const skill = input.value.trim();
+          const value = parseFloat(valueInputs[i].value);
+          const deduction = parseFloat(deductionInputs[i].value);
 
-        skills.forEach((skill, i) => {
-          if (!skill || isNaN(values[i]) || isNaN(deductions[i])) return;
+          if (!skill || isNaN(value) || isNaN(deduction)) return;
 
           db.collection("submissions").add({
             userId: currentUserId,
             event: selectedEvent,
             skill,
-            value: values[i],
-            deduction: deductions[i],
+            value,
+            deduction,
             timestamp
           }).then(() => {
-            submittedCount++;
-            if (submittedCount === skills.length) {
+            validRows++;
+            if (validRows === skillInputs.length) {
               const status = document.createElement("p");
               status.className = "submitStatus";
-              status.textContent = `✅ All ${submittedCount} rows submitted!`;
+              status.textContent = `✅ Submitted ${validRows} rows successfully!`;
               eventForm.appendChild(status);
             }
-          }).catch(console.error);
+          }).catch(err => {
+            console.error("Submission error:", err);
+          });
         });
+
+        if (validRows === 0) {
+          const status = document.createElement("p");
+          status.className = "submitStatus";
+          status.style.color = "red";
+          status.textContent = "⚠️ No valid rows to submit. Please fill out at least one.";
+          eventForm.appendChild(status);
+        }
       });
     });
   </script>
