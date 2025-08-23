@@ -7,36 +7,28 @@
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-firestore-compat.js"></script>
   <style>
-    body { font-family: Arial; padding: 20px; background-color: #f4f4f4; }
+    body { font-family: Arial; padding: 20px; background: #f9f9f9; }
+    .panel { margin-bottom: 20px; border: 1px solid #ccc; border-radius: 6px; background: #fff; }
+    .panel-header { padding: 10px; background: #eee; cursor: pointer; font-weight: bold; }
+    .panel-body { display: none; padding: 10px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+    input[type="text"], input[type="number"] { width: 90%; padding: 4px; }
     .submitBtn, #loginBtn, #seeBreakdownBtn {
       margin-top: 10px; padding: 8px 16px;
       background-color: #0077cc; color: white;
       border: none; border-radius: 4px; cursor: pointer;
     }
-    .submitStatus { font-style: italic; margin-top: 5px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
-    input[type="text"], input[type="number"] { width: 90%; padding: 4px; }
+    .statusMsg { font-style: italic; margin-top: 5px; }
   </style>
 </head>
 <body>
-  <h1>Welcome to Your Gymnastics Dashboard</h1>
+  <h1>Gymnastics Dashboard</h1>
   <button id="loginBtn" style="display:none;">Sign in with Google</button>
   <p id="userStatus">Checking login status...</p>
-
-  <label for="eventSelect">Select Event:</label>
-  <select id="eventSelect" disabled>
-    <option value="">--Choose an event--</option>
-    <option value="FX">FX</option>
-    <option value="PH">PH</option>
-    <option value="SR">SR</option>
-    <option value="VT">VT</option>
-    <option value="PB">PB</option>
-    <option value="HB">HB</option>
-  </select>
-
-  <div id="eventForm"></div>
   <button id="seeBreakdownBtn">See Breakdown</button>
+
+  <div id="panelsContainer"></div>
 
   <script>
     const firebaseConfig = {
@@ -59,11 +51,11 @@
         currentUserId = user.uid;
         document.getElementById("userStatus").textContent = `Logged in as: ${user.displayName || user.email}`;
         document.getElementById("loginBtn").style.display = "none";
-        document.getElementById("eventSelect").disabled = false;
+        localStorage.setItem("userId", currentUserId);
+        renderPanels();
       } else {
         document.getElementById("userStatus").textContent = "Not signed in";
         document.getElementById("loginBtn").style.display = "inline-block";
-        document.getElementById("eventSelect").disabled = true;
       }
     });
 
@@ -74,107 +66,106 @@
 
     document.getElementById("seeBreakdownBtn").addEventListener("click", () => {
       if (!currentUserId) return alert("Please sign in first");
-      localStorage.setItem("userId", currentUserId);
       window.location.href = "breakdown.html";
     });
 
-    const eventSelect = document.getElementById("eventSelect");
-    const eventForm = document.getElementById("eventForm");
+    function renderPanels() {
+      const events = { FX: 8, PH: 8, SR: 8, PB: 8, HB: 8, VT: 3 };
+      const container = document.getElementById("panelsContainer");
 
-    eventSelect.addEventListener("change", () => {
-      const selectedEvent = eventSelect.value;
-      eventForm.innerHTML = "";
-      if (!selectedEvent) return;
+      Object.entries(events).forEach(([event, rows]) => {
+        const panel = document.createElement("div");
+        panel.className = "panel";
 
-      const eventRowCounts = { FX: 8, PH: 8, SR: 8, PB: 8, HB: 8, VT: 3 };
-      const rowCount = eventRowCounts[selectedEvent] || 1;
-
-      const table = document.createElement("table");
-      table.innerHTML = `
-        <thead><tr><th>Skill</th><th>Value</th><th>Deduction</th></tr></thead>
-        <tbody></tbody>
-      `;
-      const tbody = table.querySelector("tbody");
-
-      for (let i = 0; i < rowCount; i++) {
-        const row = document.createElement("tr");
-        row.innerHTML = `
-          <td><input type="text" class="skillInput"></td>
-          <td><input type="number" class="valueInput"></td>
-          <td><input type="number" class="deductionInput"></td>
-        `;
-        tbody.appendChild(row);
-      }
-
-      eventForm.appendChild(table);
-
-      const submitAllBtn = document.createElement("button");
-      submitAllBtn.textContent = "Submit All";
-      submitAllBtn.className = "submitBtn";
-      eventForm.appendChild(submitAllBtn);
-
-      submitAllBtn.addEventListener("click", () => {
-        if (!currentUserId) {
-          alert("Please sign in first");
-          return;
-        }
-
-        const skillInputs = Array.from(eventForm.querySelectorAll(".skillInput"));
-        const valueInputs = Array.from(eventForm.querySelectorAll(".valueInput"));
-        const deductionInputs = Array.from(eventForm.querySelectorAll(".deductionInput"));
-
-        const timestamp = new Date().toISOString();
-        let totalValid = 0;
-        let submittedCount = 0;
-
-        skillInputs.forEach((input, i) => {
-          const skill = input.value.trim();
-          const value = parseFloat(valueInputs[i].value);
-          const deduction = parseFloat(deductionInputs[i].value);
-
-          if (!skill || isNaN(value) || isNaN(deduction)) return;
-
-          totalValid++;
-
-          db.collection("submissions").add({
-            userId: currentUserId,
-            event: selectedEvent,
-            skill,
-            value,
-            deduction,
-            timestamp
-          }).then(() => {
-            submittedCount++;
-            if (submittedCount === totalValid) {
-              const status = document.createElement("p");
-              status.className = "submitStatus";
-              status.textContent = `✅ Submitted ${submittedCount} rows successfully!`;
-              eventForm.appendChild(status);
-
-              // Auto-clear inputs
-              skillInputs.forEach(input => input.value = "");
-              valueInputs.forEach(input => input.value = "");
-              deductionInputs.forEach(input => input.value = "");
-            }
-          }).catch(err => {
-            console.error("Submission error:", err);
-            const status = document.createElement("p");
-            status.className = "submitStatus";
-            status.style.color = "red";
-            status.textContent = "❌ Submission failed. Check console for details.";
-            eventForm.appendChild(status);
-          });
+        const header = document.createElement("div");
+        header.className = "panel-header";
+        header.textContent = `Event: ${event}`;
+        header.addEventListener("click", () => {
+          body.style.display = body.style.display === "none" ? "block" : "none";
         });
 
-        if (totalValid === 0) {
-          const status = document.createElement("p");
-          status.className = "submitStatus";
-          status.style.color = "red";
-          status.textContent = "⚠️ No valid rows to submit. Please fill out at least one.";
-          eventForm.appendChild(status);
+        const body = document.createElement("div");
+        body.className = "panel-body";
+
+        const table = document.createElement("table");
+        table.innerHTML = `
+          <thead><tr><th>Skill</th><th>Value</th><th>Deduction</th></tr></thead>
+          <tbody></tbody>
+        `;
+        const tbody = table.querySelector("tbody");
+
+        for (let i = 0; i < rows; i++) {
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td><input type="text" class="skillInput"></td>
+            <td><input type="number" class="valueInput"></td>
+            <td><input type="number" class="deductionInput"></td>
+          `;
+          tbody.appendChild(row);
         }
+
+        const submitBtn = document.createElement("button");
+        submitBtn.textContent = `Submit ${event}`;
+        submitBtn.className = "submitBtn";
+
+        const statusMsg = document.createElement("p");
+        statusMsg.className = "statusMsg";
+
+        submitBtn.addEventListener("click", () => {
+          const skillInputs = body.querySelectorAll(".skillInput");
+          const valueInputs = body.querySelectorAll(".valueInput");
+          const deductionInputs = body.querySelectorAll(".deductionInput");
+
+          const timestamp = new Date().toISOString();
+          let totalValid = 0;
+          let submittedCount = 0;
+
+          skillInputs.forEach((input, i) => {
+            const skill = input.value.trim();
+            const value = parseFloat(valueInputs[i].value);
+            const deduction = parseFloat(deductionInputs[i].value);
+
+            if (!skill || isNaN(value) || isNaN(deduction)) return;
+
+            totalValid++;
+
+            db.collection("submissions").add({
+              userId: currentUserId,
+              event,
+              skill,
+              value,
+              deduction,
+              timestamp
+            }).then(() => {
+              submittedCount++;
+              if (submittedCount === totalValid) {
+                statusMsg.textContent = `✅ Submitted ${submittedCount} rows for ${event}`;
+                skillInputs.forEach(input => input.value = "");
+                valueInputs.forEach(input => input.value = "");
+                deductionInputs.forEach(input => input.value = "");
+              }
+            }).catch(err => {
+              console.error("Submission error:", err);
+              statusMsg.textContent = "❌ Submission failed. Check console.";
+              statusMsg.style.color = "red";
+            });
+          });
+
+          if (totalValid === 0) {
+            statusMsg.textContent = "⚠️ No valid rows to submit.";
+            statusMsg.style.color = "red";
+          }
+        });
+
+        body.appendChild(table);
+        body.appendChild(submitBtn);
+        body.appendChild(statusMsg);
+
+        panel.appendChild(header);
+        panel.appendChild(body);
+        container.appendChild(panel);
       });
-    });
+    }
   </script>
 </body>
 </html>
