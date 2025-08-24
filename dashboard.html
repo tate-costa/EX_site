@@ -78,6 +78,18 @@
 
     auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(console.error);
 
+    window.onload = () => {
+      ["skillInput", "valueInput", "deductionInput"].forEach(id => {
+        document.getElementById(id).value = localStorage.getItem(id) || "";
+      });
+    };
+
+    ["skillInput", "valueInput", "deductionInput"].forEach(id => {
+      document.getElementById(id).oninput = e => {
+        localStorage.setItem(id, e.target.value);
+      };
+    });
+
     auth.onAuthStateChanged(user => {
       if (user) {
         document.getElementById("submissionSection").style.display = "block";
@@ -96,6 +108,12 @@
           try {
             await db.collection("submissions").add(submission);
             console.log("Submission saved");
+
+            // Clear inputs and localStorage
+            ["skillInput", "valueInput", "deductionInput"].forEach(id => {
+              document.getElementById(id).value = "";
+              localStorage.removeItem(id);
+            });
           } catch (err) {
             console.error("Error saving submission:", err);
           }
@@ -112,6 +130,13 @@
         .onSnapshot(snapshot => {
           const tbody = document.getElementById("breakdownTableBody");
           tbody.innerHTML = "";
+
+          if (snapshot.empty) {
+            const row = document.createElement("tr");
+            row.innerHTML = `<td colspan="5">No submissions yet.</td>`;
+            tbody.appendChild(row);
+            return;
+          }
 
           snapshot.forEach(doc => {
             const d = doc.data();
