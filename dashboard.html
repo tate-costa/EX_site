@@ -1,117 +1,91 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Gymnastics Dashboard</title>
-  <style>
-    body { font-family: Arial; padding: 20px; background-color: #f4f4f4; }
-    select, input[type="text"], input[type="number"] { padding: 6px; margin: 4px; }
-    .submitBtn, #downloadBtn { margin-top: 10px; padding: 8px 16px; background-color: #0077cc; color: white; border: none; border-radius: 4px; cursor: pointer; }
-    .submitStatus { font-style: italic; color: green; margin-top: 5px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
-    #eventForm, #dataBreakdown { margin-top: 20px; background: #fff; padding: 15px; border-radius: 6px; box-shadow: 0 0 5px rgba(0,0,0,0.1); }
-  </style>
+  <meta charset="UTF-8" />
+  <title>User Dashboard</title>
+  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-firestore.js"></script>
 </head>
 <body>
-  <h1>Gymnastics Dashboard</h1>
+  <h2>Welcome to Your Dashboard</h2>
+  <div id="authSection">
+    <input type="email" id="email" placeholder="Email" />
+    <input type="password" id="password" placeholder="Password" />
+    <button id="loginBtn">Login</button>
+  </div>
 
-  <label for="eventSelect">Select Event:</label>
-  <select id="eventSelect">
-    <option value="">--Choose an event--</option>
-    <option value="FX">FX</option>
-    <option value="PH">PH</option>
-    <option value="SR">SR</option>
-    <option value="VT">VT</option>
-    <option value="PB">PB</option>
-    <option value="HB">HB</option>
-  </select>
-
-  <div id="eventForm"></div>
-
-  <h2>📊 Data Breakdown</h2>
-  <div id="dataBreakdown">
-    <table>
-      <thead>
-        <tr><th>Timestamp</th><th>Event</th><th>Skill</th><th>Value</th><th>Deduction</th></tr>
-      </thead>
-      <tbody></tbody>
+  <div id="submissionSection" style="display:none;">
+    <h3>Submit Your Skills</h3>
+    <select id="eventSelector">
+      <option value="eventA">Event A</option>
+      <option value="eventB">Event B</option>
+    </select>
+    <table id="skillTable">
+      <thead><tr><th>Skill</th><th>Value</th><th>Deduction</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><input type="text" placeholder="Skill name" /></td>
+          <td><input type="number" placeholder="Value" /></td>
+          <td><input type="number" placeholder="Deduction" /></td>
+        </tr>
+      </tbody>
     </table>
-    <button id="downloadBtn">Download CSV</button>
+    <button id="submitBtn">Submit</button>
+    <p id="statusMsg"></p>
   </div>
 
   <script>
-    const eventSelect = document.getElementById("eventSelect");
-    const eventForm = document.getElementById("eventForm");
-    const breakdownBody = document.querySelector("#dataBreakdown tbody");
+    const firebaseConfig = { /* your config here */ };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
 
-    eventSelect.addEventListener("change", () => {
-      const selectedEvent = eventSelect.value;
-      eventForm.innerHTML = "";
-      if (!selectedEvent) return;
+    loginBtn.onclick = async () => {
+      const email = email.value;
+      const password = password.value;
+      try {
+        await auth.signInWithEmailAndPassword(email, password);
+        authSection.style.display = "none";
+        submissionSection.style.display = "block";
+      } catch (err) {
+        alert("Login failed: " + err.message);
+      }
+    };
 
-      const table = document.createElement("table");
-      table.innerHTML = `
-        <thead>
-          <tr><th>Skill</th><th>Value</th><th>Deduction</th></tr>
-        </thead>
-        <tbody>
-          ${Array.from({ length: 8 }).map(() => `
-            <tr>
-              <td><input type="text" placeholder="Skill name"></td>
-              <td><input type="number" placeholder="Value" step="0.1" min="0"></td>
-              <td><input type="number" placeholder="Deduction" step="0.1" min="0"></td>
-            </tr>
-          `).join('')}
-        </tbody>
-      `;
-      eventForm.appendChild(table);
+    submitBtn.onclick = async () => {
+      const user = auth.currentUser;
+      if (!user) return alert("Please log in first.");
+      const event = eventSelector.value;
+      const rows = skillTable.querySelectorAll("tbody tr");
+      const batch = db.batch();
+      let valid = false;
 
-      const submitBtn = document.createElement("button");
-      submitBtn.className = "submitBtn";
-      submitBtn.textContent = "Submit Scores";
-
-      const statusMsg = document.createElement("p");
-      statusMsg.className = "submitStatus";
-
-      submitBtn.addEventListener("click", () => {
-        const rows = table.querySelectorAll("tbody tr");
-        const timestamp = new Date().toLocaleString();
-        let valid = false;
-
-        rows.forEach(row => {
-          const name = row.querySelector("input[type='text']").value.trim();
-          const value = parseFloat(row.querySelector("input[placeholder='Value']").value);
-          const deduction = parseFloat(row.querySelector("input[placeholder='Deduction']").value);
-          if (name && !isNaN(value) && !isNaN(deduction)) {
-            valid = true;
-            const tr = document.createElement("tr");
-            tr.innerHTML = `<td>${timestamp}</td><td>${selectedEvent}</td><td>${name}</td><td>${value}</td><td>${deduction}</td>`;
-            breakdownBody.appendChild(tr);
-          }
-        });
-
-        statusMsg.textContent = valid ? `✅ Submitted on ${timestamp}` : "Please enter at least one complete skill entry.";
+      rows.forEach(row => {
+        const skill = row.cells[0].querySelector("input").value.trim();
+        const value = parseFloat(row.cells[1].querySelector("input").value);
+        const deduction = parseFloat(row.cells[2].querySelector("input").value);
+        if (skill && !isNaN(value) && !isNaN(deduction)) {
+          valid = true;
+          const docRef = db.collection("submissions").doc();
+          batch.set(docRef, {
+            userId: user.uid,
+            event,
+            skill,
+            value,
+            deduction,
+            timestamp: new Date().toISOString()
+          });
+        }
       });
 
-      eventForm.appendChild(submitBtn);
-      eventForm.appendChild(statusMsg);
-    });
-
-    document.getElementById("downloadBtn").addEventListener("click", () => {
-      const rows = Array.from(document.querySelectorAll("#dataBreakdown tbody tr"));
-      const csv = rows.map(row =>
-        Array.from(row.children).map(cell => `"${cell.textContent}"`).join(",")
-      ).join("\n");
-
-      const blob = new Blob([csv], { type: "text/csv" });
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.download = "gymnastics_data.csv";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    });
+      if (valid) {
+        await batch.commit();
+        statusMsg.textContent = "✅ Submitted successfully!";
+      } else {
+        statusMsg.textContent = "Please fill out all fields.";
+      }
+    };
   </script>
 </body>
 </html>
