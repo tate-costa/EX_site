@@ -25,6 +25,10 @@
       border: 1px solid #ccc;
       padding: 0.5rem;
     }
+    td input {
+      width: 100%;
+      box-sizing: border-box;
+    }
     #adminAccess {
       margin-top: 2rem;
       border-top: 1px solid #ccc;
@@ -49,7 +53,7 @@
     <h3>Your Submissions</h3>
     <table id="breakdownTable">
       <thead>
-        <tr><th>Event</th><th>Skill</th><th>Value</th><th>Deduction</th><th>Time</th></tr>
+        <tr><th>Event</th><th>Skill</th><th>Value</th><th>Deduction</th><th>Time</th><th>Actions</th></tr>
       </thead>
       <tbody id="breakdownTableBody"></tbody>
     </table>
@@ -105,11 +109,15 @@
             timestamp: Date.now()
           };
 
+          if (!submission.skill || isNaN(submission.value) || isNaN(submission.deduction)) {
+            alert("Please fill out all fields correctly.");
+            return;
+          }
+
           try {
             await db.collection("submissions").add(submission);
-            console.log("Submission saved");
+            alert("Submission saved!");
 
-            // Clear inputs and localStorage
             ["skillInput", "valueInput", "deductionInput"].forEach(id => {
               document.getElementById(id).value = "";
               localStorage.removeItem(id);
@@ -133,7 +141,7 @@
 
           if (snapshot.empty) {
             const row = document.createElement("tr");
-            row.innerHTML = `<td colspan="5">No submissions yet.</td>`;
+            row.innerHTML = `<td colspan="6">No submissions yet.</td>`;
             tbody.appendChild(row);
             return;
           }
@@ -142,15 +150,40 @@
             const d = doc.data();
             const row = document.createElement("tr");
             row.innerHTML = `
-              <td>${d.event || "—"}</td>
-              <td>${d.skill || "—"}</td>
-              <td>${d.value ?? "—"}</td>
-              <td>${d.deduction ?? "—"}</td>
+              <td><input value="${d.event || ""}" data-id="${doc.id}" data-field="event" /></td>
+              <td><input value="${d.skill || ""}" data-id="${doc.id}" data-field="skill" /></td>
+              <td><input type="number" value="${d.value ?? ""}" data-id="${doc.id}" data-field="value" /></td>
+              <td><input type="number" value="${d.deduction ?? ""}" data-id="${doc.id}" data-field="deduction" /></td>
               <td>${d.timestamp ? new Date(d.timestamp).toLocaleString() : "—"}</td>
+              <td>
+                <button onclick="updateSubmission('${doc.id}')">💾 Save</button>
+                <button onclick="deleteSubmission('${doc.id}')">🗑️ Delete</button>
+              </td>
             `;
             tbody.appendChild(row);
           });
         });
+    }
+
+    function updateSubmission(docId) {
+      const inputs = document.querySelectorAll(`[data-id="${docId}"]`);
+      const updatedData = {};
+      inputs.forEach(input => {
+        const field = input.getAttribute("data-field");
+        updatedData[field] = input.value;
+      });
+
+      db.collection("submissions").doc(docId).update(updatedData)
+        .then(() => console.log("Updated:", docId))
+        .catch(err => alert("Update failed: " + err.message));
+    }
+
+    function deleteSubmission(docId) {
+      if (confirm("Are you sure you want to delete this submission?")) {
+        db.collection("submissions").doc(docId).delete()
+          .then(() => console.log("Deleted:", docId))
+          .catch(err => alert("Delete failed: " + err.message));
+      }
     }
 
     document.getElementById("adminBtn").onclick = () => {
