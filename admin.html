@@ -9,6 +9,7 @@
 </head>
 <body>
   <h2>Admin Review Panel</h2>
+
   <div id="authSection">
     <input type="email" id="email" placeholder="Admin Email" />
     <input type="password" id="password" placeholder="Password" />
@@ -18,22 +19,39 @@
   <div id="reviewSection" style="display:none;">
     <h3>All Submissions</h3>
     <table id="reviewTable">
-      <thead><tr><th>User</th><th>Event</th><th>Skill</th><th>Value</th><th>Deduction</th><th>Time</th></tr></thead>
+      <thead>
+        <tr>
+          <th>User</th><th>Event</th><th>Skill</th>
+          <th>Value</th><th>Deduction</th><th>Time</th>
+        </tr>
+      </thead>
       <tbody></tbody>
     </table>
   </div>
 
   <script>
-    const firebaseConfig = { /* your config here */ };
+    const firebaseConfig = {
+      apiKey: "AIzaSyD3cJtk0c42pNAr3tsi_gQ7_9KcQS-HvgA",
+      authDomain: "extracker-d2148.firebaseapp.com",
+      projectId: "extracker-d2148",
+      storageBucket: "extracker-d2148.firebasestorage.app",
+      messagingSenderId: "203023038950",
+      appId: "1:203023038950:web:bc5cc0633c129e0cb2fe27",
+      measurementId: "G-XPQ7THPEKD"
+    };
+
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
 
-    loginBtn.onclick = async () => {
+    document.getElementById("loginBtn").onclick = async () => {
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value;
+
       try {
-        await auth.signInWithEmailAndPassword(email.value, password.value);
-        authSection.style.display = "none";
-        reviewSection.style.display = "block";
+        await auth.signInWithEmailAndPassword(email, password);
+        document.getElementById("authSection").style.display = "none";
+        document.getElementById("reviewSection").style.display = "block";
         loadSubmissions();
       } catch (err) {
         alert("Admin login failed: " + err.message);
@@ -41,23 +59,26 @@
     };
 
     function loadSubmissions() {
-      db.collection("submissions").orderBy("timestamp", "desc").onSnapshot(snapshot => {
-        const tbody = reviewTable.querySelector("tbody");
-        tbody.innerHTML = "";
-        snapshot.forEach(doc => {
-          const d = doc.data();
-          const row = document.createElement("tr");
-          row.innerHTML = `
-            <td>${d.userId}</td>
-            <td>${d.event}</td>
-            <td>${d.skill}</td>
-            <td>${d.value}</td>
-            <td>${d.deduction}</td>
-            <td>${new Date(d.timestamp).toLocaleString()}</td>
-          `;
-          tbody.appendChild(row);
+      db.collection("submissions")
+        .orderBy("timestamp", "desc")
+        .onSnapshot(snapshot => {
+          const tbody = document.querySelector("#reviewTable tbody");
+          tbody.innerHTML = "";
+
+          snapshot.forEach(doc => {
+            const d = doc.data();
+            const row = document.createElement("tr");
+            row.innerHTML = `
+              <td>${d.userId || "—"}</td>
+              <td>${d.event || "—"}</td>
+              <td>${d.skill || "—"}</td>
+              <td>${d.value ?? "—"}</td>
+              <td>${d.deduction ?? "—"}</td>
+              <td>${d.timestamp ? new Date(d.timestamp).toLocaleString() : "—"}</td>
+            `;
+            tbody.appendChild(row);
+          });
         });
-      });
     }
   </script>
 </body>
