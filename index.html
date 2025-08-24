@@ -55,16 +55,17 @@
     const loginBtn = document.getElementById("loginBtn");
     const dashboardLink = document.getElementById("dashboardLink");
 
-    auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(console.error);
-
-    auth.onAuthStateChanged((user) => {
+    auth.onAuthStateChanged(user => {
       if (user) {
-        localStorage.setItem("userId", user.uid);
         welcomeEl.textContent = `Welcome back, ${user.displayName || user.email}`;
         loginBtn.style.display = "none";
         dashboardLink.style.display = "inline-block";
+
+        // Optional: redirect automatically after login
+        setTimeout(() => {
+          window.location.href = "dashboard.html";
+        }, 1000);
       } else {
-        localStorage.removeItem("userId");
         welcomeEl.textContent = "Welcome, guest! Please sign in to access your dashboard.";
         loginBtn.style.display = "inline-block";
         dashboardLink.style.display = "none";
@@ -73,15 +74,17 @@
 
     loginBtn.addEventListener("click", () => {
       const provider = new firebase.auth.GoogleAuthProvider();
-      auth.signInWithPopup(provider).then(result => {
-        const user = result.user;
-        localStorage.setItem("userId", user.uid);
-        welcomeEl.textContent = `Welcome, ${user.displayName || user.email}`;
-        dashboardLink.style.display = "inline-block";
-      }).catch(error => {
-        console.error("Login failed:", error);
-        welcomeEl.textContent = "Login failed. Please try again.";
-      });
+      auth.signInWithPopup(provider)
+        .then(result => {
+          const user = result.user;
+          welcomeEl.textContent = `Welcome, ${user.displayName || user.email}`;
+          dashboardLink.style.display = "inline-block";
+          // Redirect handled by onAuthStateChanged
+        })
+        .catch(error => {
+          console.error("Login failed:", error);
+          welcomeEl.textContent = "Login failed. Please try again.";
+        });
     });
   </script>
 </body>
