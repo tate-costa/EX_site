@@ -1,91 +1,40 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <title>User Dashboard</title>
+  <title>Dashboard</title>
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-firestore.js"></script>
 </head>
 <body>
-  <h2>Welcome to Your Dashboard</h2>
-  <div id="authSection">
-    <input type="email" id="email" placeholder="Email" />
-    <input type="password" id="password" placeholder="Password" />
-    <button id="loginBtn">Login</button>
-  </div>
+  <h1>Welcome to the Dashboard</h1>
 
-  <div id="submissionSection" style="display:none;">
-    <h3>Submit Your Skills</h3>
-    <select id="eventSelector">
-      <option value="eventA">Event A</option>
-      <option value="eventB">Event B</option>
-    </select>
-    <table id="skillTable">
-      <thead><tr><th>Skill</th><th>Value</th><th>Deduction</th></tr></thead>
-      <tbody>
-        <tr>
-          <td><input type="text" placeholder="Skill name" /></td>
-          <td><input type="number" placeholder="Value" /></td>
-          <td><input type="number" placeholder="Deduction" /></td>
-        </tr>
-      </tbody>
-    </table>
-    <button id="submitBtn">Submit</button>
-    <p id="statusMsg"></p>
-  </div>
+  <!-- Your dashboard content goes here -->
 
   <script>
-    const firebaseConfig = { /* your config here */ };
+    const firebaseConfig = {
+      apiKey: "AIzaSyD3cJtk0c42pNAr3tsi_gQ7_9KcQS-HvgA",
+      authDomain: "extracker-d2148.firebaseapp.com",
+      projectId: "extracker-d2148",
+      storageBucket: "extracker-d2148.firebasestorage.app",
+      messagingSenderId: "203023038950",
+      appId: "1:203023038950:web:bc5cc0633c129e0cb2fe27",
+      measurementId: "G-XPQ7THPEKD"
+    };
+
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
 
-    loginBtn.onclick = async () => {
-      const email = email.value;
-      const password = password.value;
-      try {
-        await auth.signInWithEmailAndPassword(email, password);
-        authSection.style.display = "none";
-        submissionSection.style.display = "block";
-      } catch (err) {
-        alert("Login failed: " + err.message);
-      }
-    };
-
-    submitBtn.onclick = async () => {
-      const user = auth.currentUser;
-      if (!user) return alert("Please log in first.");
-      const event = eventSelector.value;
-      const rows = skillTable.querySelectorAll("tbody tr");
-      const batch = db.batch();
-      let valid = false;
-
-      rows.forEach(row => {
-        const skill = row.cells[0].querySelector("input").value.trim();
-        const value = parseFloat(row.cells[1].querySelector("input").value);
-        const deduction = parseFloat(row.cells[2].querySelector("input").value);
-        if (skill && !isNaN(value) && !isNaN(deduction)) {
-          valid = true;
-          const docRef = db.collection("submissions").doc();
-          batch.set(docRef, {
-            userId: user.uid,
-            event,
-            skill,
-            value,
-            deduction,
-            timestamp: new Date().toISOString()
-          });
-        }
-      });
-
-      if (valid) {
-        await batch.commit();
-        statusMsg.textContent = "✅ Submitted successfully!";
+    // Example: Check if user is logged in
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        console.log("Logged in as:", user.email);
+        // Load user-specific dashboard data here
       } else {
-        statusMsg.textContent = "Please fill out all fields.";
+        window.location.href = "login.html"; // redirect if not logged in
       }
-    };
+    });
   </script>
 </body>
 </html>
