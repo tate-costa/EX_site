@@ -12,9 +12,6 @@
       padding: 2rem;
       background-color: #f9f9f9;
     }
-    h2, h3 {
-      margin-top: 0;
-    }
     input, select, button {
       margin: 0.5rem 0;
       padding: 0.5rem;
@@ -27,7 +24,11 @@
     th, td {
       border: 1px solid #ccc;
       padding: 0.5rem;
-      text-align: left;
+    }
+    #adminAccess {
+      margin-top: 2rem;
+      border-top: 1px solid #ccc;
+      padding-top: 1rem;
     }
   </style>
 </head>
@@ -54,6 +55,12 @@
     </table>
   </div>
 
+  <div id="adminAccess">
+    <h3>Admin Access</h3>
+    <input type="password" id="adminPassword" placeholder="Enter admin password" />
+    <button id="adminBtn">Go to Admin Panel</button>
+  </div>
+
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyD3cJtk0c42pNAr3tsi_gQ7_9KcQS-HvgA",
@@ -68,6 +75,8 @@
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.firestore();
+
+    auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(console.error);
 
     auth.onAuthStateChanged(user => {
       if (user) {
@@ -87,13 +96,12 @@
           try {
             await db.collection("submissions").add(submission);
             console.log("Submission saved");
-            // Firestore listener will auto-update the table
           } catch (err) {
             console.error("Error saving submission:", err);
           }
         };
       } else {
-        window.location.href = "index.html"; // Redirect if not logged in
+        window.location.href = "index.html";
       }
     });
 
@@ -119,6 +127,15 @@
           });
         });
     }
+
+    document.getElementById("adminBtn").onclick = () => {
+      const password = document.getElementById("adminPassword").value.trim();
+      if (password === "gymnastics") {
+        window.location.href = "admin.html";
+      } else {
+        alert("Incorrect admin password.");
+      }
+    };
   </script>
 </body>
 </html>
