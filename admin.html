@@ -12,8 +12,8 @@
       padding: 2rem;
       background-color: #f4f4f4;
     }
-    input, button {
-      margin: 0.5rem 0;
+    input, select, button {
+      margin: 0.5rem;
       padding: 0.5rem;
     }
     table {
@@ -34,7 +34,7 @@
 <body>
   <h2>Admin Review Panel</h2>
 
-  <div id="authSection" style="display:none;">
+  <div id="authSection">
     <input type="email" id="email" placeholder="Admin Email" />
     <input type="password" id="password" placeholder="Password" />
     <button id="loginBtn">Login</button>
@@ -42,6 +42,17 @@
 
   <div id="reviewSection" style="display:none;">
     <h3>All Submissions</h3>
+
+    <label>Filter by Date:</label>
+    <input type="date" id="filterDate" />
+    <label>Filter by Event:</label>
+    <select id="filterEvent">
+      <option value="">All Events</option>
+      <option value="Event A">Event A</option>
+      <option value="Event B">Event B</option>
+    </select>
+    <button onclick="applyFilters()">Filter</button>
+
     <table id="reviewTable">
       <thead>
         <tr>
@@ -67,68 +78,62 @@
     const auth = firebase.auth();
     const db = firebase.firestore();
 
-    auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(console.error);
-
-    window.onload = () => {
-      document.getElementById("email").value = localStorage.getItem("adminEmail") || "";
-      document.getElementById("password").value = localStorage.getItem("adminPassword") || "";
-    };
-
-    document.getElementById("email").oninput = e => {
-      localStorage.setItem("adminEmail", e.target.value);
-    };
-    document.getElementById("password").oninput = e => {
-      localStorage.setItem("adminPassword", e.target.value);
-    };
-
-    auth.onAuthStateChanged(user => {
-      if (user) {
-        document.getElementById("authSection").style.display = "none";
-        document.getElementById("reviewSection").style.display = "block";
-        loadSubmissions();
-      } else {
-        document.getElementById("authSection").style.display = "block";
-      }
-    });
-
     document.getElementById("loginBtn").onclick = async () => {
       const email = document.getElementById("email").value.trim();
       const password = document.getElementById("password").value;
 
       try {
         await auth.signInWithEmailAndPassword(email, password);
-        localStorage.removeItem("adminEmail");
-        localStorage.removeItem("adminPassword");
+        document.getElementById("authSection").style.display = "none";
+        document.getElementById("reviewSection").style.display = "block";
+        loadSubmissions();
       } catch (err) {
         alert("Admin login failed: " + err.message);
       }
     };
 
-    function loadSubmissions() {
-      db.collection("submissions")
-        .orderBy("timestamp", "desc")
-        .onSnapshot(snapshot => {
-          const tbody = document.querySelector("#reviewTable tbody");
-          tbody.innerHTML = "";
+    function loadSubmissions(query = db.collection("submissions").orderBy("timestamp", "desc")) {
+      query.onSnapshot(snapshot => {
+        const tbody = document.querySelector("#reviewTable tbody");
+        tbody.innerHTML = "";
 
-          snapshot.forEach(doc => {
-            const d = doc.data();
-            const row = document.createElement("tr");
-            row.innerHTML = `
-              <td>${d.userId || "—"}</td>
-              <td><input value="${d.event || ""}" data-id="${doc.id}" data-field="event" /></td>
-              <td><input value="${d.skill || ""}" data-id="${doc.id}" data-field="skill" /></td>
-              <td><input type="number" value="${d.value ?? ""}" data-id="${doc.id}" data-field="value" /></td>
-              <td><input type="number" value="${d.deduction ?? ""}" data-id="${doc.id}" data-field="deduction" /></td>
-              <td>${d.timestamp ? new Date(d.timestamp).toLocaleString() : "—"}</td>
-              <td>
-                <button onclick="updateSubmission('${doc.id}')">💾 Save</button>
-                <button onclick="deleteSubmission('${doc.id}')">🗑️ Delete</button>
-              </td>
-            `;
-            tbody.appendChild(row);
-          });
+        snapshot.forEach(doc => {
+          const d = doc.data();
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td>${d.userId || "—"}</td>
+            <td><input value="${d.event || ""}" data-id="${doc.id}" data-field="event" /></td>
+            <td><input value="${d.skill || ""}" data-id="${doc.id}" data-field="skill" /></td>
+            <td><input type="number" value="${d.value ?? ""}" data-id="${doc.id}" data-field="value" /></td>
+            <td><input type="number" value="${d.deduction ?? ""}" data-id="${doc.id}" data-field="deduction" /></td>
+            <td>${d.timestamp ? new Date(d.timestamp).toLocaleString() : "—"}</td>
+            <td>
+              <button onclick="updateSubmission('${doc.id}')">💾 Save</button>
+              <button onclick="deleteSubmission('${doc.id}')">🗑️ Delete</button>
+            </td>
+          `;
+          tbody.appendChild(row);
         });
+      });
+    }
+
+    function applyFilters() {
+      const date = document.getElementById("filterDate").value;
+      const event = document.getElementById("filterEvent").value;
+
+      let query = db.collection("submissions");
+
+      if (event) query = query.where("event", "==", event);
+
+      if (date) {
+        const start = new Date(date);
+        const end = new Date(date);
+        end.setHours(23, 59, 59, 999);
+        query = query.where("timestamp", ">=", start.getTime()).where("timestamp", "<=", end.getTime());
+      }
+
+      query = query.orderBy("timestamp", "desc");
+      loadSubmissions(query);
     }
 
     function updateSubmission(docId) {
