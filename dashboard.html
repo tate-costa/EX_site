@@ -50,6 +50,15 @@
     <input type="number" id="deductionInput" placeholder="Deduction" />
     <button id="submitBtn">Submit</button>
 
+    <h3>Filter Submissions</h3>
+    <input type="date" id="filterDate" />
+    <select id="filterEvent">
+      <option value="">All Events</option>
+      <option value="Event A">Event A</option>
+      <option value="Event B">Event B</option>
+    </select>
+    <button onclick="applyFilters()">Filter</button>
+
     <h3>Your Submissions</h3>
     <table id="breakdownTable">
       <thead>
@@ -94,14 +103,17 @@
       };
     });
 
+    let currentUserId = null;
+
     auth.onAuthStateChanged(user => {
       if (user) {
+        currentUserId = user.uid;
         document.getElementById("submissionSection").style.display = "block";
-        loadUserSubmissions(user.uid);
+        loadUserSubmissions();
 
         document.getElementById("submitBtn").onclick = async () => {
           const submission = {
-            userId: user.uid,
+            userId: currentUserId,
             event: document.getElementById("eventSelect").value,
             skill: document.getElementById("skillInput").value.trim(),
             value: parseFloat(document.getElementById("valueInput").value),
@@ -117,7 +129,6 @@
           try {
             await db.collection("submissions").add(submission);
             alert("Submission saved!");
-
             ["skillInput", "valueInput", "deductionInput"].forEach(id => {
               document.getElementById(id).value = "";
               localStorage.removeItem(id);
@@ -131,38 +142,54 @@
       }
     });
 
-    function loadUserSubmissions(userId) {
-      db.collection("submissions")
-        .where("userId", "==", userId)
-        .orderBy("timestamp", "desc")
-        .onSnapshot(snapshot => {
-          const tbody = document.getElementById("breakdownTableBody");
-          tbody.innerHTML = "";
+    function loadUserSubmissions(query = db.collection("submissions").where("userId", "==", currentUserId).orderBy("timestamp", "desc")) {
+      query.onSnapshot(snapshot => {
+        const tbody = document.getElementById("breakdownTableBody");
+        tbody.innerHTML = "";
 
-          if (snapshot.empty) {
-            const row = document.createElement("tr");
-            row.innerHTML = `<td colspan="6">No submissions yet.</td>`;
-            tbody.appendChild(row);
-            return;
-          }
+        if (snapshot.empty) {
+          const row = document.createElement("tr");
+          row.innerHTML = `<td colspan="6">No submissions yet.</td>`;
+          tbody.appendChild(row);
+          return;
+        }
 
-          snapshot.forEach(doc => {
-            const d = doc.data();
-            const row = document.createElement("tr");
-            row.innerHTML = `
-              <td><input value="${d.event || ""}" data-id="${doc.id}" data-field="event" /></td>
-              <td><input value="${d.skill || ""}" data-id="${doc.id}" data-field="skill" /></td>
-              <td><input type="number" value="${d.value ?? ""}" data-id="${doc.id}" data-field="value" /></td>
-              <td><input type="number" value="${d.deduction ?? ""}" data-id="${doc.id}" data-field="deduction" /></td>
-              <td>${d.timestamp ? new Date(d.timestamp).toLocaleString() : "—"}</td>
-              <td>
-                <button onclick="updateSubmission('${doc.id}')">💾 Save</button>
-                <button onclick="deleteSubmission('${doc.id}')">🗑️ Delete</button>
-              </td>
-            `;
-            tbody.appendChild(row);
-          });
+        snapshot.forEach(doc => {
+          const d = doc.data();
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td><input value="${d.event || ""}" data-id="${doc.id}" data-field="event" /></td>
+            <td><input value="${d.skill || ""}" data-id="${doc.id}" data-field="skill" /></td>
+            <td><input type="number" value="${d.value ?? ""}" data-id="${doc.id}" data-field="value" /></td>
+            <td><input type="number" value="${d.deduction ?? ""}" data-id="${doc.id}" data-field="deduction" /></td>
+            <td>${d.timestamp ? new Date(d.timestamp).toLocaleString() : "—"}</td>
+            <td>
+              <button onclick="updateSubmission('${doc.id}')">💾 Save</button>
+              <button onclick="deleteSubmission('${doc.id}')">🗑️ Delete</button>
+            </td>
+          `;
+          tbody.appendChild(row);
         });
+      });
+    }
+
+    function applyFilters() {
+      const date = document.getElementById("filterDate").value;
+      const event = document.getElementById("filterEvent").value;
+
+      let query = db.collection("submissions").where("userId", "==", currentUserId);
+
+      if (event) query = query.where("event", "==", event);
+
+      if (date) {
+        const start = new Date(date);
+        const end = new Date(date);
+        end.setHours(23, 59, 59, 999);
+        query = query.where("timestamp", ">=", start.getTime()).where("timestamp", "<=", end.getTime());
+      }
+
+      query = query.orderBy("timestamp", "desc");
+      loadUserSubmissions(query);
     }
 
     function updateSubmission(docId) {
