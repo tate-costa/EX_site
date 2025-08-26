@@ -1,117 +1,126 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <title>Submission Breakdown</title>
+  <title>User Dashboard</title>
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-firestore-compat.js"></script>
-  <style>
-    body { font-family: Arial; padding: 20px; background: #f4f4f4; }
-    h2 { margin-top: 30px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
-    .summary { font-weight: bold; background: #e0f7fa; }
-    #exportBtn {
-      margin-top: 20px; padding: 8px 16px;
-      background-color: #0077cc; color: white;
-      border: none; border-radius: 4px; cursor: pointer;
-    }
-  </style>
+  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-database-compat.js"></script>
 </head>
 <body>
-  <h1>Your Submission Breakdown</h1>
-  <div id="breakdownContainer"></div>
-  <button id="exportBtn">Export to CSV</button>
+  <h2>Dashboard</h2>
+
+  <select id="eventSelect" onchange="renderSubmissionRows()">
+    <option value="">Select Event</option>
+    <option value="FX">FX</option>
+    <option value="PH">PH</option>
+    <option value="SR">SR</option>
+    <option value="VT">VT</option>
+    <option value="PB">PB</option>
+    <option value="HB">HB</option>
+  </select>
+
+  <div id="adminArea">
+    <input id="adminCode" placeholder="Enter admin code" />
+    <button onclick="checkAdminCode()">Go</button>
+  </div>
+
+  <section id="submissionSection" style="display:none;">
+    <div id="submissionRows"></div>
+    <button id="submitBtn">Submit</button>
+  </section>
 
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyD3cJtk0c42pNAr3tsi_gQ7_9KcQS-HvgA",
       authDomain: "extracker-d2148.firebaseapp.com",
+      databaseURL: "https://extracker-d2148-default-rtdb.firebaseio.com",
       projectId: "extracker-d2148",
-      appId: "1:123456789012:web:abcdef123456"
+      storageBucket: "extracker-d2148.appspot.com",
+      messagingSenderId: "203023038950",
+      appId: "1:203023038950:web:bc5cc0633c129e0cb2fe27",
+      measurementId: "G-XPQ7THPEKD"
     };
-
     firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
+    const auth = firebase.auth();
+    const db = firebase.database();
+    let currentUserId = null;
 
-    const userId = localStorage.getItem("userId");
-    if (!userId) {
-      document.body.innerHTML = "<p>Please sign in via dashboard first.</p>";
-      throw new Error("Missing userId");
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        currentUserId = user.uid;
+        document.getElementById("submissionSection").style.display = "block";
+      } else {
+        window.location.href = "index.html";
+      }
+    });
+
+    function renderSubmissionRows() {
+      const event = document.getElementById("eventSelect").value;
+      const container = document.getElementById("submissionRows");
+      container.innerHTML = "";
+
+      let labels = [];
+      if (event === "VT") {
+        labels = ["Preflight", "In Air", "Landing"];
+      } else if (event) {
+        labels = Array.from({ length: 8 }, (_, i) => `Skill ${i + 1}`);
+      }
+
+      labels.forEach((label, index) => {
+        const row = document.createElement("div");
+        row.innerHTML = `
+          <label>${label}</label>
+          <input id="skill_${index}" placeholder="${label}" />
+          <input id="value_${index}" type="number" placeholder="Value" />
+          <input id="deduction_${index}" type="number" placeholder="Deduction" />
+          <br>
+        `;
+        container.appendChild(row);
+      });
     }
 
-    db.collection("submissions")
-      .where("userId", "==", userId)
-      .orderBy("timestamp", "desc")
-      .get()
-      .then(snapshot => {
-        const data = {};
-        snapshot.forEach(doc => {
-          const entry = doc.data();
-          const { event, skill, value, deduction } = entry;
-          if (!data[event]) data[event] = [];
-          data[event].push({ skill, value, deduction });
-        });
+    function checkAdminCode() {
+      const code = document.getElementById("adminCode").value.trim();
+      if (code === "gymnastics") {
+        window.location.href = "breakdown.html";
+      } else {
+        alert("Incorrect admin code.");
+      }
+    }
 
-        const container = document.getElementById("breakdownContainer");
-        let csvRows = [["Event","Skill","Value","Deduction"]];
+    document.getElementById("submitBtn").onclick = async () => {
+      const event = document.getElementById("eventSelect").value;
+      if (!event) {
+        alert("Please select an event.");
+        return;
+      }
 
-        Object.entries(data).forEach(([event, entries]) => {
-          const section = document.createElement("div");
-          section.innerHTML = `<h2>${event}</h2>`;
-          const table = document.createElement("table");
-          table.innerHTML = `
-            <thead><tr><th>Skill</th><th>Value</th><th>Deduction</th><th>Net</th></tr></thead>
-            <tbody></tbody>
-          `;
-          const tbody = table.querySelector("tbody");
+      const rows = event === "VT" ? 3 : 8;
+      for (let i = 0; i < rows; i++) {
+        const skill = document.getElementById(`skill_${i}`).value.trim();
+        const value = parseFloat(document.getElementById(`value_${i}`).value);
+        const deduction = parseFloat(document.getElementById(`deduction_${i}`).value);
 
-          let totalValue = 0, totalDeduction = 0;
+        if (!skill || isNaN(value) || isNaN(deduction)) continue;
 
-          entries.forEach(({ skill, value, deduction }) => {
-            const net = value - deduction;
-            totalValue += value;
-            totalDeduction += deduction;
-            const row = document.createElement("tr");
-            row.innerHTML = `
-              <td>${skill}</td>
-              <td>${value.toFixed(2)}</td>
-              <td>${deduction.toFixed(2)}</td>
-              <td>${net.toFixed(2)}</td>
-            `;
-            tbody.appendChild(row);
-            csvRows.push([event, skill, value, deduction]);
-          });
+        const submission = {
+          userId: currentUserId,
+          event,
+          skill,
+          value,
+          deduction,
+          timestamp: Date.now()
+        };
 
-          const summaryRow = document.createElement("tr");
-          summaryRow.className = "summary";
-          summaryRow.innerHTML = `
-            <td>Total</td>
-            <td>${totalValue.toFixed(2)}</td>
-            <td>${totalDeduction.toFixed(2)}</td>
-            <td>${(totalValue - totalDeduction).toFixed(2)}</td>
-          `;
-          tbody.appendChild(summaryRow);
+        const ref = db.ref('users/' + currentUserId + '/submissions').push();
+        const id = ref.key;
+        await ref.set(submission);
+        await db.ref('allSubmissions/' + id).set(submission);
+      }
 
-          section.appendChild(table);
-          container.appendChild(section);
-        });
-
-        document.getElementById("exportBtn").addEventListener("click", () => {
-          const csvContent = "data:text/csv;charset=utf-8," + csvRows.map(r => r.join(",")).join("\n");
-          const encodedUri = encodeURI(csvContent);
-          const link = document.createElement("a");
-          link.setAttribute("href", encodedUri);
-          link.setAttribute("download", "submission_breakdown.csv");
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-        });
-      })
-      .catch(err => {
-        console.error("Error loading breakdown:", err);
-        document.getElementById("breakdownContainer").innerHTML = "<p>Failed to load data.</p>";
-      });
+      alert("Submissions saved!");
+      renderSubmissionRows(); // Reset inputs
+    };
   </script>
 </body>
 </html>
