@@ -1,123 +1,195 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Dashboard</title>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <title>User Dashboard</title>
+  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-database-compat.js"></script>
 </head>
 <body>
-  <h2>Submit New Entry</h2>
-  <div id="submissionSection" style="display:none;">
-    <label>Event: <input type="text" id="eventInput"></label><br>
-    <label>Skill: <input type="text" id="skillInput"></label><br>
-    <label>Value: <input type="number" id="valueInput"></label><br>
-    <label>Deduction: <input type="number" id="deductionInput"></label><br>
-    <button id="submitBtn">Submit</button>
+  <h2>User Dashboard</h2>
 
-    <h3>Your Previous Submissions</h3>
-    <table border="1">
-      <thead>
-        <tr>
-          <th>Event</th><th>Skill</th><th>Value</th><th>Deduction</th><th>Time</th><th>Actions</th>
-        </tr>
-      </thead>
-      <tbody id="userSubmissionTable"></tbody>
-    </table>
-  </div>
+  <select id="eventSelect" onchange="renderSubmissionRows()">
+    <option value="">Select Event</option>
+    <option value="FX">FX</option>
+    <option value="PH">PH</option>
+    <option value="SR">SR</option>
+    <option value="VT">VT</option>
+    <option value="PB">PB</option>
+    <option value="HB">HB</option>
+  </select>
+
+  <div id="submissionRows"></div>
+  <button onclick="submitAll()">Submit All</button>
+
+  <br><br>
+  <input id="filterDate" type="date" />
+  <input id="filterEvent" placeholder="Filter by event" />
+  <button onclick="applyFilters()">Apply Filters</button>
+
+  <table>
+    <thead>
+      <tr><th>Event</th><th>Skill</th><th>Value</th><th>Deduction</th><th>Timestamp</th><th>Actions</th></tr>
+    </thead>
+    <tbody id="breakdownTableBody"></tbody>
+  </table>
+
+  <br>
+  <input id="adminCode" placeholder="Enter admin code" />
+  <button onclick="checkAdminCode()">Go to Admin</button>
 
   <script>
-    // 🔧 Firebase Config
     const firebaseConfig = {
-      apiKey: "YOUR_API_KEY",
-      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-      databaseURL: "https://YOUR_PROJECT_ID.firebaseio.com",
-      projectId: "YOUR_PROJECT_ID",
-      storageBucket: "YOUR_PROJECT_ID.appspot.com",
-      messagingSenderId: "YOUR_SENDER_ID",
-      appId: "YOUR_APP_ID"
+      apiKey: "AIzaSyD3cJtk0c42pNAr3tsi_gQ7_9KcQS-HvgA",
+      authDomain: "extracker-d2148.firebaseapp.com",
+      projectId: "extracker-d2148",
+      storageBucket: "extracker-d2148.appspot.com",
+      messagingSenderId: "203023038950",
+      appId: "1:203023038950:web:bc5cc0633c129e0cb2fe27",
+      measurementId: "G-XPQ7THPEKD"
     };
     firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
     const auth = firebase.auth();
-
+    const db = firebase.database();
     let currentUserId = null;
 
-    // 🔐 Auth Listener
     auth.onAuthStateChanged(user => {
       if (user) {
         currentUserId = user.uid;
-        document.getElementById("submissionSection").style.display = "block";
         loadUserSubmissions();
       } else {
         window.location.href = "index.html";
       }
     });
 
-    // 🚀 Submit Handler
-    document.getElementById("submitBtn").onclick = () => {
-      const event = document.getElementById("eventInput").value;
-      const skill = document.getElementById("skillInput").value;
-      const value = parseInt(document.getElementById("valueInput").value);
-      const deduction = parseInt(document.getElementById("deductionInput").value);
-      const timestamp = Date.now();
+    function renderSubmissionRows() {
+      const container = document.getElementById("submissionRows");
+      container.innerHTML = "";
+      const event = document.getElementById("eventSelect").value;
+      let labels = [];
 
-      const submission = { event, skill, value, deduction, timestamp };
+      if (event === "VT") {
+        labels = ["Preflight", "In Air", "Landing"];
+      } else if (event) {
+        labels = Array.from({ length: 8 }, (_, i) => `Skill ${i + 1}`);
+      }
 
-      const userRef = db.ref('users/' + currentUserId + '/submissions').push();
-      userRef.set(submission);
+      labels.forEach(label => {
+        const row = document.createElement("div");
+        row.innerHTML = `
+          <strong>${label}</strong><br>
+          <input placeholder="Skill" class="skillInput" />
+          <input type="number" placeholder="Value" class="valueInput" />
+          <input type="number" placeholder="Deduction" class="deductionInput" />
+          <hr>
+        `;
+        container.appendChild(row);
+      });
+    }
 
-      const globalRef = db.ref('allSubmissions').push();
-      globalRef.set({ ...submission, userId: currentUserId });
+    function submitAll() {
+      const event = document.getElementById("eventSelect").value;
+      if (!event) return alert("Select an event first.");
 
-      // Clear inputs
-      document.getElementById("eventInput").value = "";
-      document.getElementById("skillInput").value = "";
-      document.getElementById("valueInput").value = "";
-      document.getElementById("deductionInput").value = "";
+      const skills = document.querySelectorAll(".skillInput");
+      const values = document.querySelectorAll(".valueInput");
+      const deductions = document.querySelectorAll(".deductionInput");
 
-      loadUserSubmissions();
-    };
+      for (let i = 0; i < skills.length; i++) {
+        const skill = skills[i].value.trim();
+        const value = parseFloat(values[i].value);
+        const deduction = parseFloat(deductions[i].value);
 
-    // 📋 Load + Render Submissions
-    function loadUserSubmissions() {
+        if (!skill || isNaN(value) || isNaN(deduction)) continue;
+
+        const submission = {
+          userId: currentUserId,
+          event,
+          skill,
+          value,
+          deduction,
+          timestamp: Date.now()
+        };
+
+        const ref = db.ref('users/' + currentUserId + '/submissions').push();
+        const id = ref.key;
+        ref.set(submission);
+        db.ref('allSubmissions/' + id).set(submission);
+      }
+
+      alert("Submissions saved!");
+      renderSubmissionRows(); // reset inputs
+    }
+
+    function loadUserSubmissions(eventFilter = null, dateFilter = null) {
       const ref = db.ref('users/' + currentUserId + '/submissions').orderByChild('timestamp');
       ref.on('value', snapshot => {
-        const tbody = document.getElementById("userSubmissionTable");
+        const tbody = document.getElementById("breakdownTableBody");
         tbody.innerHTML = "";
+        const filtered = [];
 
-        const entries = [];
         snapshot.forEach(child => {
-          entries.push({ id: child.key, ...child.val() });
+          const data = child.val();
+          const key = child.key;
+          let valid = true;
+          if (eventFilter && data.event !== eventFilter) valid = false;
+          if (dateFilter) {
+            const d = new Date(data.timestamp).toDateString();
+            const f = new Date(dateFilter).toDateString();
+            if (d !== f) valid = false;
+          }
+          if (valid) filtered.push({ key, data });
         });
 
-        entries.sort((a, b) => b.timestamp - a.timestamp);
-        entries.forEach(entry => {
+        filtered.sort((a, b) => b.data.timestamp - a.data.timestamp);
+        filtered.forEach(({ key, data }) => {
           const row = document.createElement("tr");
           row.innerHTML = `
-            <td><input value="${entry.event}" onchange="updateField('${entry.id}', 'event', this.value)" /></td>
-            <td><input value="${entry.skill}" onchange="updateField('${entry.id}', 'skill', this.value)" /></td>
-            <td><input value="${entry.value}" onchange="updateField('${entry.id}', 'value', this.value)" /></td>
-            <td><input value="${entry.deduction}" onchange="updateField('${entry.id}', 'deduction', this.value)" /></td>
-            <td>${new Date(entry.timestamp).toLocaleString()}</td>
-            <td><button onclick="deleteSubmission('${entry.id}')">🗑️</button></td>
+            <td><input value="${data.event}" data-id="${key}" data-field="event" /></td>
+            <td><input value="${data.skill}" data-id="${key}" data-field="skill" /></td>
+            <td><input type="number" value="${data.value}" data-id="${key}" data-field="value" /></td>
+            <td><input type="number" value="${data.deduction}" data-id="${key}" data-field="deduction" /></td>
+            <td>${new Date(data.timestamp).toLocaleString()}</td>
+            <td>
+              <button onclick="updateSubmission('${key}')">💾</button>
+              <button onclick="deleteSubmission('${key}')">🗑️</button>
+            </td>
           `;
           tbody.appendChild(row);
         });
       });
     }
 
-    // ✏️ Update Field
-    function updateField(id, field, newValue) {
-      const ref = db.ref('users/' + currentUserId + '/submissions/' + id);
-      ref.update({ [field]: newValue });
+    function applyFilters() {
+      const date = document.getElementById("filterDate").value;
+      const event = document.getElementById("filterEvent").value;
+      loadUserSubmissions(event, date);
     }
 
-    // ❌ Delete Submission
+    function updateSubmission(id) {
+      const inputs = document.querySelectorAll(`[data-id="${id}"]`);
+      const updated = {};
+      inputs.forEach(input => {
+        const field = input.getAttribute("data-field");
+        updated[field] = field === "value" || field === "deduction" ? parseFloat(input.value) : input.value;
+      });
+      db.ref('users/' + currentUserId + '/submissions/' + id).update(updated);
+      db.ref('allSubmissions/' + id).update(updated);
+    }
+
     function deleteSubmission(id) {
       if (confirm("Delete this submission?")) {
-        const ref = db.ref('users/' + currentUserId + '/submissions/' + id);
-        ref.remove();
+        db.ref('users/' + currentUserId + '/submissions/' + id).remove();
+        db.ref('allSubmissions/' + id).remove();
+      }
+    }
+
+    function checkAdminCode() {
+      const code = document.getElementById("adminCode").value.trim();
+      if (code === "gymnastics") {
+        window.location.href = "breakdown.html";
+      } else {
+        alert("Invalid code.");
       }
     }
   </script>
