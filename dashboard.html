@@ -5,120 +5,90 @@
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-firestore-compat.js"></script>
 </head>
 <body>
-  <h2>User Dashboard</h2>
-
-  <select id="eventSelect" onchange="renderSubmissionRows()">
-    <option value="">Select Event</option>
-    <option value="FX">FX</option>
-    <option value="PH">PH</option>
-    <option value="SR">SR</option>
-    <option value="VT">VT</option>
-    <option value="PB">PB</option>
-    <option value="HB">HB</option>
-  </select>
-
-  <div id="submissionRows"></div>
-  <button onclick="submitAll()">Submit All</button>
-
-  <br><br>
-  <input id="filterDate" type="date" />
-  <input id="filterEvent" placeholder="Filter by event" />
-  <button onclick="applyFilters()">Apply Filters</button>
-
-  <table>
-    <thead>
-      <tr><th>Event</th><th>Skill</th><th>Value</th><th>Deduction</th><th>Timestamp</th><th>Actions</th></tr>
-    </thead>
-    <tbody id="breakdownTableBody"></tbody>
-  </table>
-
-  <br>
-  <input id="adminCode" placeholder="Enter admin code" />
-  <button onclick="checkAdminCode()">Go to Admin</button>
+  <section id="submissionSection" style="display:none;">
+    <select id="eventSelect"></select>
+    <input id="skillInput" placeholder="Skill" />
+    <input id="valueInput" type="number" placeholder="Value" />
+    <input id="deductionInput" type="number" placeholder="Deduction" />
+    <button id="submitBtn">Submit</button>
+    <br><br>
+    <input id="filterDate" type="date" />
+    <input id="filterEvent" placeholder="Filter by event" />
+    <button onclick="applyFilters()">Apply Filters</button>
+    <table>
+      <thead>
+        <tr><th>Event</th><th>Skill</th><th>Value</th><th>Deduction</th><th>Timestamp</th><th>Actions</th></tr>
+      </thead>
+      <tbody id="breakdownTableBody"></tbody>
+    </table>
+  </section>
 
   <script>
     const firebaseConfig = {
-      apiKey: "AIzaSyD3cJtk0c42pNAr3tsi_gQ7_9KcQS-HvgA",
-      authDomain: "extracker-d2148.firebaseapp.com",
-      projectId: "extracker-d2148",
-      storageBucket: "extracker-d2148.appspot.com",
-      messagingSenderId: "203023038950",
-      appId: "1:203023038950:web:bc5cc0633c129e0cb2fe27",
-      measurementId: "G-XPQ7THPEKD"
-    };
+  apiKey: "AIzaSyD3cJtk0c42pNAr3tsi_gQ7_9KcQS-HvgA",
+  authDomain: "extracker-d2148.firebaseapp.com",
+  projectId: "extracker-d2148",
+  storageBucket: "extracker-d2148.firebasestorage.app",
+  messagingSenderId: "203023038950",
+  appId: "1:203023038950:web:bc5cc0633c129e0cb2fe27",
+  measurementId: "G-XPQ7THPEKD"
+};
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.database();
+    const firestore = firebase.firestore();
     let currentUserId = null;
 
     auth.onAuthStateChanged(user => {
       if (user) {
         currentUserId = user.uid;
+        document.getElementById("submissionSection").style.display = "block";
+        loadEvents();
         loadUserSubmissions();
+
+        document.getElementById("submitBtn").onclick = async () => {
+          const submission = {
+            userId: currentUserId,
+            event: document.getElementById("eventSelect").value,
+            skill: document.getElementById("skillInput").value.trim(),
+            value: parseFloat(document.getElementById("valueInput").value),
+            deduction: parseFloat(document.getElementById("deductionInput").value),
+            timestamp: Date.now()
+          };
+
+          if (!submission.skill || isNaN(submission.value) || isNaN(submission.deduction)) {
+            alert("Please fill out all fields correctly.");
+            return;
+          }
+
+          const ref = db.ref('users/' + currentUserId + '/submissions').push();
+          const id = ref.key;
+          await ref.set(submission);
+          await db.ref('allSubmissions/' + id).set(submission);
+          alert("Submission saved!");
+          ["skillInput", "valueInput", "deductionInput"].forEach(id => {
+            document.getElementById(id).value = "";
+          });
+        };
       } else {
         window.location.href = "index.html";
       }
     });
 
-    function renderSubmissionRows() {
-      const container = document.getElementById("submissionRows");
-      container.innerHTML = "";
-      const event = document.getElementById("eventSelect").value;
-      let labels = [];
-
-      if (event === "VT") {
-        labels = ["Preflight", "In Air", "Landing"];
-      } else if (event) {
-        labels = Array.from({ length: 8 }, (_, i) => `Skill ${i + 1}`);
-      }
-
-      labels.forEach(label => {
-        const row = document.createElement("div");
-        row.innerHTML = `
-          <strong>${label}</strong><br>
-          <input placeholder="Skill" class="skillInput" />
-          <input type="number" placeholder="Value" class="valueInput" />
-          <input type="number" placeholder="Deduction" class="deductionInput" />
-          <hr>
-        `;
-        container.appendChild(row);
+    function loadEvents() {
+      firestore.collection("events").get().then(snapshot => {
+        const select = document.getElementById("eventSelect");
+        snapshot.forEach(doc => {
+          const event = doc.data();
+          const option = document.createElement("option");
+          option.value = event.title;
+          option.textContent = event.title;
+          select.appendChild(option);
+        });
       });
-    }
-
-    function submitAll() {
-      const event = document.getElementById("eventSelect").value;
-      if (!event) return alert("Select an event first.");
-
-      const skills = document.querySelectorAll(".skillInput");
-      const values = document.querySelectorAll(".valueInput");
-      const deductions = document.querySelectorAll(".deductionInput");
-
-      for (let i = 0; i < skills.length; i++) {
-        const skill = skills[i].value.trim();
-        const value = parseFloat(values[i].value);
-        const deduction = parseFloat(deductions[i].value);
-
-        if (!skill || isNaN(value) || isNaN(deduction)) continue;
-
-        const submission = {
-          userId: currentUserId,
-          event,
-          skill,
-          value,
-          deduction,
-          timestamp: Date.now()
-        };
-
-        const ref = db.ref('users/' + currentUserId + '/submissions').push();
-        const id = ref.key;
-        ref.set(submission);
-        db.ref('allSubmissions/' + id).set(submission);
-      }
-
-      alert("Submissions saved!");
-      renderSubmissionRows(); // reset inputs
     }
 
     function loadUserSubmissions(eventFilter = null, dateFilter = null) {
@@ -181,15 +151,6 @@
       if (confirm("Delete this submission?")) {
         db.ref('users/' + currentUserId + '/submissions/' + id).remove();
         db.ref('allSubmissions/' + id).remove();
-      }
-    }
-
-    function checkAdminCode() {
-      const code = document.getElementById("adminCode").value.trim();
-      if (code === "gymnastics") {
-        window.location.href = "breakdown.html";
-      } else {
-        alert("Invalid code.");
       }
     }
   </script>
