@@ -1,197 +1,95 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>User Dashboard</title>
-  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-database-compat.js"></script>
+  <title>Dashboard</title>
+  <style>
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 8px; border: 1px solid #ccc; text-align: left; }
+    .group-color-0 { background-color: #f0f9ff; }
+    .group-color-1 { background-color: #e0f7fa; }
+    .group-color-2 { background-color: #fce4ec; }
+    .group-color-3 { background-color: #f3e5f5; }
+    .group-color-4 { background-color: #fff3e0; }
+  </style>
 </head>
 <body>
-  <h2>User Dashboard</h2>
-
-  <select id="eventSelect" onchange="renderSubmissionRows()">
-    <option value="">Select Event</option>
-    <option value="FX">FX</option>
-    <option value="PH">PH</option>
-    <option value="SR">SR</option>
-    <option value="VT">VT</option>
-    <option value="PB">PB</option>
-    <option value="HB">HB</option>
-  </select>
-
-  <div id="submissionRows"></div>
-  <button onclick="submitAll()">Submit All</button>
-
-  <br><br>
-  <input id="filterDate" type="date" />
-  <input id="filterEvent" placeholder="Filter by event" />
-  <button onclick="applyFilters()">Apply Filters</button>
-
-  <table>
+  <h2>Dashboard</h2>
+  <table id="submissionTable">
     <thead>
-      <tr><th>Event</th><th>Skill</th><th>Value</th><th>Deduction</th><th>Timestamp</th><th>Actions</th></tr>
+      <tr>
+        <th>Select</th>
+        <th>Event</th>
+        <th>User</th>
+        <th>Data</th>
+        <th>Actions</th>
+      </tr>
     </thead>
-    <tbody id="breakdownTableBody"></tbody>
+    <tbody></tbody>
   </table>
+  <button id="deleteSelected">Delete Selected</button>
 
-  <br>
-  <input id="adminCode" placeholder="Enter admin code" />
-  <button onclick="checkAdminCode()">Go to Admin</button>
-
+  <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js"></script>
   <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyD3cJtk0c42pNAr3tsi_gQ7_9KcQS-HvgA",
-      authDomain: "extracker-d2148.firebaseapp.com",
-      projectId: "extracker-d2148",
-      storageBucket: "extracker-d2148.appspot.com",
-      messagingSenderId: "203023038950",
-      appId: "1:203023038950:web:bc5cc0633c129e0cb2fe27",
-      measurementId: "G-XPQ7THPEKD"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.database();
-    let currentUserId = null;
+    const firebaseConfig = { /* your config */ };
+    const app = firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
 
-    auth.onAuthStateChanged(user => {
-      if (user) {
-        currentUserId = user.uid;
-        loadUserSubmissions();
-      } else {
-        window.location.href = "index.html";
-      }
+    const tableBody = document.querySelector('#submissionTable tbody');
+    const colorMap = {};
+    let colorIndex = 0;
+
+    const colors = ['group-color-0', 'group-color-1', 'group-color-2', 'group-color-3', 'group-color-4'];
+
+    db.collection('submissions').get().then(snapshot => {
+      const rows = [];
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        rows.push({ id: doc.id, ...data });
+      });
+
+      const groupColor = {};
+      rows.forEach(row => {
+        const groupKey = row.submissionId || row.timestamp || row.eventName;
+        if (!groupColor[groupKey]) {
+          groupColor[groupKey] = colors[colorIndex % colors.length];
+          colorIndex++;
+        }
+
+        const tr = document.createElement('tr');
+        tr.classList.add(groupColor[groupKey]);
+
+        tr.innerHTML = `
+          <td><input type="checkbox" class="row-select" data-id="${row.id}"></td>
+          <td>${row.eventName || ''}</td>
+          <td>${row.user || ''}</td>
+          <td>${row.data || ''}</td>
+          <td><button onclick="deleteRow('${row.id}')">Delete</button></td>
+        `;
+        tableBody.appendChild(tr);
+      });
     });
 
-    function renderSubmissionRows() {
-      const container = document.getElementById("submissionRows");
-      container.innerHTML = "";
-      const event = document.getElementById("eventSelect").value;
-      let labels = [];
+    function deleteRow(id) {
+      if (!confirm('Delete this row?')) return;
+      db.collection('submissions').doc(id).delete().then(() => location.reload());
+    }
 
-      if (event === "VT") {
-        labels = ["Preflight", "In Air", "Landing"];
-      } else if (event) {
-        labels = Array.from({ length: 8 }, (_, i) => `Skill ${i + 1}`);
-      }
+    document.getElementById('deleteSelected').addEventListener('click', () => {
+      const selected = Array.from(document.querySelectorAll('.row-select:checked'))
+        .map(input => input.dataset.id);
 
-      labels.forEach(label => {
-        const row = document.createElement("div");
-        row.innerHTML = `
-          <strong>${label}</strong><br>
-          <input placeholder="Skill" class="skillInput" />
-          <input type="number" placeholder="Value" class="valueInput" />
-          <input type="number" placeholder="Deduction" class="deductionInput" />
-          <hr>
-        `;
-        container.appendChild(row);
+      if (selected.length === 0) return alert('No rows selected.');
+      if (!confirm(`Delete ${selected.length} rows?`)) return;
+
+      const batch = db.batch();
+      selected.forEach(id => {
+        const ref = db.collection('submissions').doc(id);
+        batch.delete(ref);
       });
-    }
 
-    function submitAll() {
-      const event = document.getElementById("eventSelect").value;
-      if (!event) return alert("Select an event first.");
-
-      const skills = document.querySelectorAll(".skillInput");
-      const values = document.querySelectorAll(".valueInput");
-      const deductions = document.querySelectorAll(".deductionInput");
-
-      for (let i = 0; i < skills.length; i++) {
-        const skill = skills[i].value.trim();
-        const value = parseFloat(values[i].value);
-        const deduction = parseFloat(deductions[i].value);
-
-        if (!skill || isNaN(value) || isNaN(deduction)) continue;
-
-        const submission = {
-          userId: currentUserId,
-          event,
-          skill,
-          value,
-          deduction,
-          timestamp: Date.now()
-        };
-
-        const ref = db.ref('users/' + currentUserId + '/submissions').push();
-        const id = ref.key;
-        ref.set(submission);
-        db.ref('allSubmissions/' + id).set(submission);
-      }
-
-      alert("Submissions saved!");
-      renderSubmissionRows(); // reset inputs
-    }
-
-    function loadUserSubmissions(eventFilter = null, dateFilter = null) {
-      const ref = db.ref('users/' + currentUserId + '/submissions').orderByChild('timestamp');
-      ref.on('value', snapshot => {
-        const tbody = document.getElementById("breakdownTableBody");
-        tbody.innerHTML = "";
-        const filtered = [];
-
-        snapshot.forEach(child => {
-          const data = child.val();
-          const key = child.key;
-          let valid = true;
-          if (eventFilter && data.event !== eventFilter) valid = false;
-          if (dateFilter) {
-            const d = new Date(data.timestamp).toDateString();
-            const f = new Date(dateFilter).toDateString();
-            if (d !== f) valid = false;
-          }
-          if (valid) filtered.push({ key, data });
-        });
-
-        filtered.sort((a, b) => b.data.timestamp - a.data.timestamp);
-        filtered.forEach(({ key, data }) => {
-          const row = document.createElement("tr");
-          row.innerHTML = `
-            <td><input value="${data.event}" data-id="${key}" data-field="event" /></td>
-            <td><input value="${data.skill}" data-id="${key}" data-field="skill" /></td>
-            <td><input type="number" value="${data.value}" data-id="${key}" data-field="value" /></td>
-            <td><input type="number" value="${data.deduction}" data-id="${key}" data-field="deduction" /></td>
-            <td>${new Date(data.timestamp).toLocaleString()}</td>
-            <td>
-              <button onclick="updateSubmission('${key}')">💾</button>
-              <button onclick="deleteSubmission('${key}')">🗑️</button>
-            </td>
-          `;
-          tbody.appendChild(row);
-        });
-      });
-    }
-
-    function applyFilters() {
-      const date = document.getElementById("filterDate").value;
-      const event = document.getElementById("filterEvent").value;
-      loadUserSubmissions(event, date);
-    }
-
-    function updateSubmission(id) {
-      const inputs = document.querySelectorAll(`[data-id="${id}"]`);
-      const updated = {};
-      inputs.forEach(input => {
-        const field = input.getAttribute("data-field");
-        updated[field] = field === "value" || field === "deduction" ? parseFloat(input.value) : input.value;
-      });
-      db.ref('users/' + currentUserId + '/submissions/' + id).update(updated);
-      db.ref('allSubmissions/' + id).update(updated);
-    }
-
-    function deleteSubmission(id) {
-      if (confirm("Delete this submission?")) {
-        db.ref('users/' + currentUserId + '/submissions/' + id).remove();
-        db.ref('allSubmissions/' + id).remove();
-      }
-    }
-
-    function checkAdminCode() {
-      const code = document.getElementById("adminCode").value.trim();
-      if (code === "gymnastics") {
-        window.location.href = "breakdown.html";
-      } else {
-        alert("Invalid code.");
-      }
-    }
+      batch.commit().then(() => location.reload());
+    });
   </script>
 </body>
 </html>
