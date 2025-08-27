@@ -5,13 +5,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-database-compat.js"></script>
-  <style>
-    .group-color-0 { background-color: #f0f9ff; }
-    .group-color-1 { background-color: #e0f7fa; }
-    .group-color-2 { background-color: #fce4ec; }
-    .group-color-3 { background-color: #f3e5f5; }
-    .group-color-4 { background-color: #fff3e0; }
-  </style>
 </head>
 <body>
   <h2>User Dashboard</h2>
@@ -30,20 +23,17 @@
   <button onclick="submitAll()">Submit All</button>
 
   <br><br>
-  <input id="filterDate" type="date" />
+  <label for="dayRange">Show submissions from the past <span id="dayLabel">14</span> days:</label>
+  <input type="range" id="dayRange" min="0" max="60" value="14" oninput="updateDayLabel()" />
   <input id="filterEvent" placeholder="Filter by event" />
   <button onclick="applyFilters()">Apply Filters</button>
 
   <table>
     <thead>
-      <tr>
-        <th>Select</th><th>Event</th><th>Skill</th><th>Value</th><th>Deduction</th><th>Timestamp</th><th>Actions</th>
-      </tr>
+      <tr><th>Event</th><th>Skill</th><th>Value</th><th>Deduction</th><th>Timestamp</th><th>Actions</th></tr>
     </thead>
     <tbody id="breakdownTableBody"></tbody>
   </table>
-
-  <button onclick="deleteSelected()">Delete Selected</button>
 
   <br>
   <input id="adminCode" placeholder="Enter admin code" />
@@ -132,6 +122,19 @@
       renderSubmissionRows();
     }
 
+    function updateDayLabel() {
+      const days = document.getElementById("dayRange").value;
+      document.getElementById("dayLabel").textContent = days;
+      applyFilters();
+    }
+
+    function applyFilters() {
+      const event = document.getElementById("filterEvent").value;
+      const days = parseInt(document.getElementById("dayRange").value);
+      const cutoff = days > 0 ? Date.now() - (days * 24 * 60 * 60 * 1000) : null;
+      loadUserSubmissions(event, cutoff);
+    }
+
     function loadUserSubmissions(eventFilter = null, dateFilter = null) {
       const ref = db.ref('users/' + currentUserId + '/submissions').orderByChild('timestamp');
       ref.on('value', snapshot => {
@@ -144,35 +147,15 @@
           const key = child.key;
           let valid = true;
           if (eventFilter && data.event !== eventFilter) valid = false;
-          if (dateFilter) {
-            const d = new Date(data.timestamp).toDateString();
-            const f = new Date(dateFilter).toDateString();
-            if (d !== f) valid = false;
-          }
+          if (dateFilter && data.timestamp < dateFilter) valid = false;
           if (valid) filtered.push({ key, data });
         });
 
         filtered.sort((a, b) => b.data.timestamp - a.data.timestamp);
-
-        const groupMap = {};
-        let groupIndex = 0;
-        const groupColors = ['group-color-0', 'group-color-1', 'group-color-2', 'group-color-3', 'group-color-4'];
-
         filtered.forEach(({ key, data }) => {
-          const groupKey = Math.floor(data.timestamp / 5000);
-          if (!groupMap[groupKey]) {
-            groupMap[groupKey] = groupColors[groupIndex % groupColors.length];
-            groupIndex++;
-          }
-
           const row = document.createElement("tr");
-          row.classList.add(groupMap[groupKey]);
-
           row.innerHTML = `
-            <td>
-              <input type="checkbox" class="row-select" data-id="${key}" />
-              <input value="${data.event}" data-id="${key}" data-field="event" />
-            </td>
+            <td><input value="${data.event}" data-id="${key}" data-field="event" /></td>
             <td><input value="${data.skill}" data-id="${key}" data-field="skill" /></td>
             <td><input type="number" value="${data.value}" data-id="${key}" data-field="value" /></td>
             <td><input type="number" value="${data.deduction}" data-id="${key}" data-field="deduction" /></td>
@@ -185,12 +168,6 @@
           tbody.appendChild(row);
         });
       });
-    }
-
-    function applyFilters() {
-      const date = document.getElementById("filterDate").value;
-      const event = document.getElementById("filterEvent").value;
-      loadUserSubmissions(event, date);
     }
 
     function updateSubmission(id) {
@@ -209,22 +186,6 @@
         db.ref('users/' + currentUserId + '/submissions/' + id).remove();
         db.ref('allSubmissions/' + id).remove();
       }
-    }
-
-    function deleteSelected() {
-      const selected = Array.from(document.querySelectorAll('.row-select:checked'))
-        .map(input => input.dataset.id);
-
-      if (selected.length === 0) return alert("No rows selected.");
-      if (!confirm(`Delete ${selected.length} submissions?`)) return;
-
-           selected.forEach(id => {
-        db.ref('users/' + currentUserId + '/submissions/' + id).remove();
-        db.ref('allSubmissions/' + id).remove();
-      });
-
-      alert("Selected submissions deleted.");
-      loadUserSubmissions(); // refresh view
     }
 
     function checkAdminCode() {
