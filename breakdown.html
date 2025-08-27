@@ -6,11 +6,11 @@
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-database-compat.js"></script>
   <style>
     body { font-family: sans-serif; padding: 20px; }
-    select { margin-right: 10px; }
+    select, input[type="range"] { margin-right: 10px; }
     table { border-collapse: collapse; width: 100%; margin-top: 20px; }
     th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
     th { background-color: #f0f0f0; }
-    h2, h3 { margin-top: 40px; }
+    .highlight-red { background-color: #ffe5e5; }
   </style>
 </head>
 <body>
@@ -27,16 +27,20 @@
     <option value="HB">HB</option>
   </select>
 
-  <label>Filter by User ID:</label>
+  <label>Filter by Name:</label>
   <select id="userFilter" onchange="applyFilters()">
     <option value="">All Users</option>
   </select>
+
+  <label>Show submissions from the past <span id="dayLabel">14</span> days:</label>
+  <input type="range" id="dayRange" min="0" max="60" value="14" oninput="updateDayLabel()" />
 
   <table>
     <thead>
       <tr>
         <th>Skill</th>
         <th>Submissions</th>
+        <th>Avg Value</th>
         <th>Avg Deduction</th>
         <th>Max Deduction</th>
         <th>Min Deduction</th>
@@ -62,33 +66,51 @@
     const db = firebase.database();
 
     let allData = [];
+    const nameMap = {};
 
-    db.ref('allSubmissions').once('value').then(snapshot => {
-      const userSet = new Set();
+    // Fetch user names
+    db.ref('users').once('value').then(snapshot => {
       snapshot.forEach(child => {
-        const entry = child.val();
-        if (entry.userId) userSet.add(entry.userId);
-        allData.push(entry);
+        const uid = child.key;
+        const name = child.val().name;
+        if (name) nameMap[uid] = name;
       });
 
-      const userSelect = document.getElementById("userFilter");
-      Array.from(userSet).sort().forEach(uid => {
+      // Populate name dropdown
+      const nameSelect = document.getElementById("userFilter");
+      const uniqueNames = [...new Set(Object.values(nameMap))].sort();
+      uniqueNames.forEach(name => {
         const option = document.createElement("option");
-        option.value = uid;
-        option.textContent = uid;
-        userSelect.appendChild(option);
+        option.value = name;
+        option.textContent = name;
+        nameSelect.appendChild(option);
       });
 
-      applyFilters();
+      // Fetch submissions
+      db.ref('allSubmissions').once('value').then(snapshot => {
+        snapshot.forEach(child => {
+          allData.push(child.val());
+        });
+        applyFilters();
+      });
     });
+
+    function updateDayLabel() {
+      const days = document.getElementById("dayRange").value;
+      document.getElementById("dayLabel").textContent = days;
+      applyFilters();
+    }
 
     function applyFilters() {
       const event = document.getElementById("eventFilter").value;
-      const userId = document.getElementById("userFilter").value;
+      const selectedName = document.getElementById("userFilter").value;
+      const days = parseInt(document.getElementById("dayRange").value);
+      const cutoff = days > 0 ? Date.now() - (days * 24 * 60 * 60 * 1000) : null;
 
       const filtered = allData.filter(entry => {
         if (event && entry.event !== event) return false;
-        if (userId && entry.userId !== userId) return false;
+        if (selectedName && nameMap[entry.userId] !== selectedName) return false;
+        if (cutoff && entry.timestamp < cutoff) return false;
         return true;
       });
 
@@ -102,21 +124,24 @@
       filtered.forEach(entry => {
         const skill = entry.skill?.trim();
         const deduction = parseFloat(entry.deduction);
+        const value = parseFloat(entry.value);
         if (!skill || isNaN(deduction)) return;
 
         if (!skillStats[skill]) {
-          skillStats[skill] = { count: 0, total: 0, max: deduction, min: deduction };
+          skillStats[skill] = { count: 0, totalDeduction: 0, totalValue: 0, max: deduction, min: deduction, values: [] };
         }
 
         skillStats[skill].count++;
-        skillStats[skill].total += deduction;
+        skillStats[skill].totalDeduction += deduction;
+        skillStats[skill].totalValue += isNaN(value) ? 0 : value;
         skillStats[skill].max = Math.max(skillStats[skill].max, deduction);
         skillStats[skill].min = Math.min(skillStats[skill].min, deduction);
+        if (!isNaN(value)) skillStats[skill].values.push(value);
 
         totalDeduction += deduction;
         totalCount++;
-
         skillFrequency[skill] = (skillFrequency[skill] || 0) + 1;
+
         maxDeduction = Math.max(maxDeduction, deduction);
         minDeduction = Math.min(minDeduction, deduction);
       });
@@ -124,12 +149,17 @@
       const tbody = document.getElementById("breakdownTableBody");
       tbody.innerHTML = "";
       Object.entries(skillStats).forEach(([skill, stats]) => {
-        const avg = (stats.total / stats.count).toFixed(2);
+        const avgDeduction = (stats.totalDeduction / stats.count).toFixed(2);
+        const avgValue = stats.values.length ? (stats.totalValue / stats.values.length).toFixed(2) : "N/A";
+        const highlight = parseFloat(avgDeduction) > parseFloat(avgValue) ? "highlight-red" : "";
+
         const row = document.createElement("tr");
+        row.className = highlight;
         row.innerHTML = `
           <td>${skill}</td>
           <td>${stats.count}</td>
-          <td>${avg}</td>
+          <td>${avgValue}</td>
+          <td>${avgDeduction}</td>
           <td>${stats.max}</td>
           <td>${stats.min}</td>
         `;
