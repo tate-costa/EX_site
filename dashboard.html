@@ -92,6 +92,9 @@
       const event = document.getElementById("eventSelect").value;
       if (!event) return alert("Select an event first.");
 
+      const user = firebase.auth().currentUser;
+      const userName = user.displayName || user.email || "Unknown";
+
       const skills = document.querySelectorAll(".skillInput");
       const values = document.querySelectorAll(".valueInput");
       const deductions = document.querySelectorAll(".deductionInput");
@@ -105,6 +108,7 @@
 
         const submission = {
           userId: currentUserId,
+          userName: userName,
           event,
           skill,
           value,
