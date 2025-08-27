@@ -1,16 +1,24 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>User Dashboard</title>
+  <title>Breakdown Dashboard</title>
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-database-compat.js"></script>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    select { margin-right: 10px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    th { background-color: #f0f0f0; }
+    h2, h3 { margin-top: 40px; }
+  </style>
 </head>
 <body>
-  <h2>Dashboard</h2>
+  <h1>Skill Deduction Breakdown</h1>
 
-  <select id="eventSelect" onchange="renderSubmissionRows()">
-    <option value="">Select Event</option>
+  <label>Filter by Event:</label>
+  <select id="eventFilter" onchange="applyFilters()">
+    <option value="">All Events</option>
     <option value="FX">FX</option>
     <option value="PH">PH</option>
     <option value="SR">SR</option>
@@ -19,21 +27,31 @@
     <option value="HB">HB</option>
   </select>
 
-  <div id="adminArea">
-    <input id="adminCode" placeholder="Enter admin code" />
-    <button onclick="checkAdminCode()">Go</button>
-  </div>
+  <label>Filter by User ID:</label>
+  <select id="userFilter" onchange="applyFilters()">
+    <option value="">All Users</option>
+  </select>
 
-  <section id="submissionSection" style="display:none;">
-    <div id="submissionRows"></div>
-    <button id="submitBtn">Submit</button>
-  </section>
+  <table>
+    <thead>
+      <tr>
+        <th>Skill</th>
+        <th>Submissions</th>
+        <th>Avg Deduction</th>
+        <th>Max Deduction</th>
+        <th>Min Deduction</th>
+      </tr>
+    </thead>
+    <tbody id="breakdownTableBody"></tbody>
+  </table>
+
+  <h3>Overall Diagnostics</h3>
+  <div id="diagnostics"></div>
 
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyD3cJtk0c42pNAr3tsi_gQ7_9KcQS-HvgA",
       authDomain: "extracker-d2148.firebaseapp.com",
-      databaseURL: "https://extracker-d2148-default-rtdb.firebaseio.com",
       projectId: "extracker-d2148",
       storageBucket: "extracker-d2148.appspot.com",
       messagingSenderId: "203023038950",
@@ -41,86 +59,93 @@
       measurementId: "G-XPQ7THPEKD"
     };
     firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
     const db = firebase.database();
-    let currentUserId = null;
 
-    auth.onAuthStateChanged(user => {
-      if (user) {
-        currentUserId = user.uid;
-        document.getElementById("submissionSection").style.display = "block";
-      } else {
-        window.location.href = "index.html";
-      }
+    let allData = [];
+
+    db.ref('allSubmissions').once('value').then(snapshot => {
+      const userSet = new Set();
+      snapshot.forEach(child => {
+        const entry = child.val();
+        if (entry.userId) userSet.add(entry.userId);
+        allData.push(entry);
+      });
+
+      const userSelect = document.getElementById("userFilter");
+      Array.from(userSet).sort().forEach(uid => {
+        const option = document.createElement("option");
+        option.value = uid;
+        option.textContent = uid;
+        userSelect.appendChild(option);
+      });
+
+      applyFilters();
     });
 
-    function renderSubmissionRows() {
-      const event = document.getElementById("eventSelect").value;
-      const container = document.getElementById("submissionRows");
-      container.innerHTML = "";
+    function applyFilters() {
+      const event = document.getElementById("eventFilter").value;
+      const userId = document.getElementById("userFilter").value;
 
-      let labels = [];
-      if (event === "VT") {
-        labels = ["Preflight", "In Air", "Landing"];
-      } else if (event) {
-        labels = Array.from({ length: 8 }, (_, i) => `Skill ${i + 1}`);
-      }
-
-      labels.forEach((label, index) => {
-        const row = document.createElement("div");
-        row.innerHTML = `
-          <label>${label}</label>
-          <input id="skill_${index}" placeholder="${label}" />
-          <input id="value_${index}" type="number" placeholder="Value" />
-          <input id="deduction_${index}" type="number" placeholder="Deduction" />
-          <br>
-        `;
-        container.appendChild(row);
+      const filtered = allData.filter(entry => {
+        if (event && entry.event !== event) return false;
+        if (userId && entry.userId !== userId) return false;
+        return true;
       });
+
+      const skillStats = {};
+      let totalDeduction = 0;
+      let totalCount = 0;
+      let maxDeduction = -Infinity;
+      let minDeduction = Infinity;
+      const skillFrequency = {};
+
+      filtered.forEach(entry => {
+        const skill = entry.skill?.trim();
+        const deduction = parseFloat(entry.deduction);
+        if (!skill || isNaN(deduction)) return;
+
+        if (!skillStats[skill]) {
+          skillStats[skill] = { count: 0, total: 0, max: deduction, min: deduction };
+        }
+
+        skillStats[skill].count++;
+        skillStats[skill].total += deduction;
+        skillStats[skill].max = Math.max(skillStats[skill].max, deduction);
+        skillStats[skill].min = Math.min(skillStats[skill].min, deduction);
+
+        totalDeduction += deduction;
+        totalCount++;
+
+        skillFrequency[skill] = (skillFrequency[skill] || 0) + 1;
+        maxDeduction = Math.max(maxDeduction, deduction);
+        minDeduction = Math.min(minDeduction, deduction);
+      });
+
+      const tbody = document.getElementById("breakdownTableBody");
+      tbody.innerHTML = "";
+      Object.entries(skillStats).forEach(([skill, stats]) => {
+        const avg = (stats.total / stats.count).toFixed(2);
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${skill}</td>
+          <td>${stats.count}</td>
+          <td>${avg}</td>
+          <td>${stats.max}</td>
+          <td>${stats.min}</td>
+        `;
+        tbody.appendChild(row);
+      });
+
+      const mostFrequent = Object.entries(skillFrequency).sort((a, b) => b[1] - a[1])[0];
+      const diagnostics = document.getElementById("diagnostics");
+      diagnostics.innerHTML = `
+        <p><strong>Total Submissions:</strong> ${totalCount}</p>
+        <p><strong>Overall Avg Deduction:</strong> ${(totalDeduction / totalCount).toFixed(2)}</p>
+        <p><strong>Highest Deduction:</strong> ${maxDeduction}</p>
+        <p><strong>Lowest Deduction:</strong> ${minDeduction}</p>
+        <p><strong>Most Frequent Skill:</strong> ${mostFrequent ? mostFrequent[0] + " (" + mostFrequent[1] + ")" : "N/A"}</p>
+      `;
     }
-
-    function checkAdminCode() {
-      const code = document.getElementById("adminCode").value.trim();
-      if (code === "gymnastics") {
-        window.location.href = "breakdown.html";
-      } else {
-        alert("Incorrect admin code.");
-      }
-    }
-
-    document.getElementById("submitBtn").onclick = async () => {
-      const event = document.getElementById("eventSelect").value;
-      if (!event) {
-        alert("Please select an event.");
-        return;
-      }
-
-      const rows = event === "VT" ? 3 : 8;
-      for (let i = 0; i < rows; i++) {
-        const skill = document.getElementById(`skill_${i}`).value.trim();
-        const value = parseFloat(document.getElementById(`value_${i}`).value);
-        const deduction = parseFloat(document.getElementById(`deduction_${i}`).value);
-
-        if (!skill || isNaN(value) || isNaN(deduction)) continue;
-
-        const submission = {
-          userId: currentUserId,
-          event,
-          skill,
-          value,
-          deduction,
-          timestamp: Date.now()
-        };
-
-        const ref = db.ref('users/' + currentUserId + '/submissions').push();
-        const id = ref.key;
-        await ref.set(submission);
-        await db.ref('allSubmissions/' + id).set(submission);
-      }
-
-      alert("Submissions saved!");
-      renderSubmissionRows(); // Reset inputs
-    };
   </script>
 </body>
 </html>
