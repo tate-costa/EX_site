@@ -5,6 +5,22 @@
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-database-compat.js"></script>
+  <style>
+    .group-color-0 { background-color: #f0f9ff; }
+    .group-color-1 { background-color: #e0f7fa; }
+    .group-color-2 { background-color: #fce4ec; }
+    .group-color-3 { background-color: #f3e5f5; }
+    .group-color-4 { background-color: #fff3e0; }
+    .group-header {
+      font-weight: bold;
+      cursor: pointer;
+      padding: 6px;
+      background-color: #ddd;
+    }
+    .hidden-group {
+      display: none;
+    }
+  </style>
 </head>
 <body>
   <h2>User Dashboard</h2>
@@ -152,50 +168,48 @@
         });
 
         filtered.sort((a, b) => b.data.timestamp - a.data.timestamp);
+
+        const groupMap = {};
+        let groupIndex = 0;
+        const groupColors = ['group-color-0', 'group-color-1', 'group-color-2', 'group-color-3', 'group-color-4'];
+        const grouped = {};
+
         filtered.forEach(({ key, data }) => {
-          const row = document.createElement("tr");
-          row.innerHTML = `
-            <td><input value="${data.event}" data-id="${key}" data-field="event" /></td>
-            <td><input value="${data.skill}" data-id="${key}" data-field="skill" /></td>
-            <td><input type="number" value="${data.value}" data-id="${key}" data-field="value" /></td>
-            <td><input type="number" value="${data.deduction}" data-id="${key}" data-field="deduction" /></td>
-            <td>${new Date(data.timestamp).toLocaleString()}</td>
-            <td>
-              <button onclick="updateSubmission('${key}')">💾</button>
-              <button onclick="deleteSubmission('${key}')">🗑️</button>
-            </td>
-          `;
-          tbody.appendChild(row);
+          const groupKey = Math.floor(data.timestamp / 5000);
+          if (!grouped[groupKey]) grouped[groupKey] = [];
+          grouped[groupKey].push({ key, data });
+        });
+
+        Object.entries(grouped).forEach(([groupKey, entries]) => {
+          const colorClass = groupColors[groupIndex % groupColors.length];
+          groupIndex++;
+
+          const groupId = `group-${groupKey}`;
+          const headerRow = document.createElement("tr");
+          headerRow.classList.add("group-header");
+          headerRow.innerHTML = `<td colspan="6" onclick="toggleGroup('${groupId}')">
+            Group: ${new Date(entries[0].data.timestamp).toLocaleString()} (${entries.length} entries)
+          </td>`;
+          tbody.appendChild(headerRow);
+
+          entries.forEach(({ key, data }) => {
+            const row = document.createElement("tr");
+            row.classList.add(colorClass, groupId);
+
+            row.innerHTML = `
+              <td><input value="${data.event}" data-id="${key}" data-field="event" /></td>
+              <td><input value="${data.skill}" data-id="${key}" data-field="skill" /></td>
+              <td><input type="number" value="${data.value}" data-id="${key}" data-field="value" /></td>
+              <td><input type="number" value="${data.deduction}" data-id="${key}" data-field="deduction" /></td>
+              <td>${new Date(data.timestamp).toLocaleString()}</td>
+              <td>
+                <button onclick="updateSubmission('${key}')">💾</button>
+                <button onclick="deleteSubmission('${key}')">🗑️</button>
+              </td>
+            `;
+            tbody.appendChild(row);
+          });
         });
       });
     }
 
-    function updateSubmission(id) {
-      const inputs = document.querySelectorAll(`[data-id="${id}"]`);
-      const updated = {};
-      inputs.forEach(input => {
-        const field = input.getAttribute("data-field");
-        updated[field] = field === "value" || field === "deduction" ? parseFloat(input.value) : input.value;
-      });
-      db.ref('users/' + currentUserId + '/submissions/' + id).update(updated);
-      db.ref('allSubmissions/' + id).update(updated);
-    }
-
-    function deleteSubmission(id) {
-      if (confirm("Delete this submission?")) {
-        db.ref('users/' + currentUserId + '/submissions/' + id).remove();
-        db.ref('allSubmissions/' + id).remove();
-      }
-    }
-
-    function checkAdminCode() {
-      const code = document.getElementById("adminCode").value.trim();
-      if (code === "gymnastics") {
-        window.location.href = "breakdown.html";
-      } else {
-        alert("Invalid code.");
-      }
-    }
-  </script>
-</body>
-</html>
