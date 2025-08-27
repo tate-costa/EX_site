@@ -66,19 +66,21 @@
     const db = firebase.database();
 
     let allData = [];
+    const userMap = {}; // userId → userName
 
     db.ref('allSubmissions').once('value').then(snapshot => {
-      const nameSet = new Set();
       snapshot.forEach(child => {
         const entry = child.val();
-        if (entry.userName) nameSet.add(entry.userName);
+        if (entry.userId && entry.userName) {
+          userMap[entry.userId] = entry.userName;
+        }
         allData.push(entry);
       });
 
       const nameSelect = document.getElementById("userFilter");
-      Array.from(nameSet).sort().forEach(name => {
+      Object.entries(userMap).sort((a, b) => a[1].localeCompare(b[1])).forEach(([uid, name]) => {
         const option = document.createElement("option");
-        option.value = name;
+        option.value = uid;
         option.textContent = name;
         nameSelect.appendChild(option);
       });
@@ -94,13 +96,13 @@
 
     function applyFilters() {
       const event = document.getElementById("eventFilter").value;
-      const selectedName = document.getElementById("userFilter").value;
+      const selectedUserId = document.getElementById("userFilter").value;
       const days = parseInt(document.getElementById("dayRange").value);
       const cutoff = days > 0 ? Date.now() - (days * 24 * 60 * 60 * 1000) : null;
 
       const filtered = allData.filter(entry => {
         if (event && entry.event !== event) return false;
-        if (selectedName && entry.userName !== selectedName) return false;
+        if (selectedUserId && entry.userId !== selectedUserId) return false;
         if (cutoff && entry.timestamp < cutoff) return false;
         return true;
       });
