@@ -66,33 +66,24 @@
     const db = firebase.database();
 
     let allData = [];
-    const nameMap = {};
 
-    // Fetch user names
-    db.ref('users').once('value').then(snapshot => {
+    db.ref('allSubmissions').once('value').then(snapshot => {
+      const nameSet = new Set();
       snapshot.forEach(child => {
-        const uid = child.key;
-        const name = child.val().name;
-        if (name) nameMap[uid] = name;
+        const entry = child.val();
+        if (entry.userName) nameSet.add(entry.userName);
+        allData.push(entry);
       });
 
-      // Populate name dropdown
       const nameSelect = document.getElementById("userFilter");
-      const uniqueNames = [...new Set(Object.values(nameMap))].sort();
-      uniqueNames.forEach(name => {
+      Array.from(nameSet).sort().forEach(name => {
         const option = document.createElement("option");
         option.value = name;
         option.textContent = name;
         nameSelect.appendChild(option);
       });
 
-      // Fetch submissions
-      db.ref('allSubmissions').once('value').then(snapshot => {
-        snapshot.forEach(child => {
-          allData.push(child.val());
-        });
-        applyFilters();
-      });
+      applyFilters();
     });
 
     function updateDayLabel() {
@@ -109,7 +100,7 @@
 
       const filtered = allData.filter(entry => {
         if (event && entry.event !== event) return false;
-        if (selectedName && nameMap[entry.userId] !== selectedName) return false;
+        if (selectedName && entry.userName !== selectedName) return false;
         if (cutoff && entry.timestamp < cutoff) return false;
         return true;
       });
