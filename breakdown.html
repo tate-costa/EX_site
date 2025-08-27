@@ -4,13 +4,14 @@
   <title>Breakdown Dashboard</title>
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-database-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body { font-family: sans-serif; padding: 20px; }
-    select { margin-right: 10px; }
+    select, input[type="range"] { margin-right: 10px; }
     table { border-collapse: collapse; width: 100%; margin-top: 20px; }
     th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
     th { background-color: #f0f0f0; }
-    h2, h3 { margin-top: 40px; }
+    .highlight-red { background-color: #ffe5e5; }
   </style>
 </head>
 <body>
@@ -32,6 +33,15 @@
     <option value="">All Users</option>
   </select>
 
+  <label>Show submissions from the past <span id="dayLabel">14</span> days:</label>
+  <input type="range" id="dayRange" min="0" max="60" value="14" oninput="updateDayLabel()" />
+
+  <label>Chart Mode:</label>
+  <select id="chartMode" onchange="applyFilters()">
+    <option value="per-skill">Per Skill (Compare Users)</option>
+    <option value="per-event">Per Event (Compare Skills)</option>
+  </select>
+
   <table>
     <thead>
       <tr>
@@ -48,6 +58,9 @@
   <h3>Overall Diagnostics</h3>
   <div id="diagnostics"></div>
 
+  <h3>User Comparison Chart</h3>
+  <canvas id="userSkillChart" height="300"></canvas>
+
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyD3cJtk0c42pNAr3tsi_gQ7_9KcQS-HvgA",
@@ -60,7 +73,6 @@
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
-
     let allData = [];
 
     db.ref('allSubmissions').once('value').then(snapshot => {
@@ -82,13 +94,23 @@
       applyFilters();
     });
 
+    function updateDayLabel() {
+      const days = document.getElementById("dayRange").value;
+      document.getElementById("dayLabel").textContent = days;
+      applyFilters();
+    }
+
     function applyFilters() {
       const event = document.getElementById("eventFilter").value;
       const userId = document.getElementById("userFilter").value;
+      const days = parseInt(document.getElementById("dayRange").value);
+      const cutoff = days > 0 ? Date.now() - (days * 24 * 60 * 60 * 1000) : null;
+      const chartMode = document.getElementById("chartMode").value;
 
       const filtered = allData.filter(entry => {
         if (event && entry.event !== event) return false;
         if (userId && entry.userId !== userId) return false;
+        if (cutoff && entry.timestamp < cutoff) return false;
         return true;
       });
 
@@ -98,25 +120,32 @@
       let maxDeduction = -Infinity;
       let minDeduction = Infinity;
       const skillFrequency = {};
+      const userSkillMap = {};
 
       filtered.forEach(entry => {
-        const skill = entry.skill?.trim();
-        const deduction = parseFloat(entry.deduction);
+        const { userId, skill, deduction, value } = entry;
         if (!skill || isNaN(deduction)) return;
 
         if (!skillStats[skill]) {
-          skillStats[skill] = { count: 0, total: 0, max: deduction, min: deduction };
+          skillStats[skill] = { count: 0, total: 0, max: deduction, min: deduction, values: [] };
         }
 
         skillStats[skill].count++;
         skillStats[skill].total += deduction;
         skillStats[skill].max = Math.max(skillStats[skill].max, deduction);
         skillStats[skill].min = Math.min(skillStats[skill].min, deduction);
+        if (!isNaN(value)) skillStats[skill].values.push(value);
 
         totalDeduction += deduction;
         totalCount++;
-
         skillFrequency[skill] = (skillFrequency[skill] || 0) + 1;
+
+        if (userId) {
+          if (!userSkillMap[userId]) userSkillMap[userId] = {};
+          if (!userSkillMap[userId][skill]) userSkillMap[userId][skill] = [];
+          userSkillMap[userId][skill].push(deduction);
+        }
+
         maxDeduction = Math.max(maxDeduction, deduction);
         minDeduction = Math.min(minDeduction, deduction);
       });
@@ -124,12 +153,16 @@
       const tbody = document.getElementById("breakdownTableBody");
       tbody.innerHTML = "";
       Object.entries(skillStats).forEach(([skill, stats]) => {
-        const avg = (stats.total / stats.count).toFixed(2);
+        const avgDeduction = (stats.total / stats.count).toFixed(2);
+        const avgValue = stats.values.length ? (stats.values.reduce((a, b) => a + b, 0) / stats.values.length).toFixed(2) : "N/A";
+        const highlight = parseFloat(avgDeduction) > parseFloat(avgValue) ? "highlight-red" : "";
+
         const row = document.createElement("tr");
+        row.className = highlight;
         row.innerHTML = `
           <td>${skill}</td>
           <td>${stats.count}</td>
-          <td>${avg}</td>
+          <td>${avgDeduction}</td>
           <td>${stats.max}</td>
           <td>${stats.min}</td>
         `;
@@ -145,7 +178,15 @@
         <p><strong>Lowest Deduction:</strong> ${minDeduction}</p>
         <p><strong>Most Frequent Skill:</strong> ${mostFrequent ? mostFrequent[0] + " (" + mostFrequent[1] + ")" : "N/A"}</p>
       `;
-    }
-  </script>
-</body>
-</html>
+
+      const ctx = document.getElementById('userSkillChart').getContext('2d');
+      if (window.userChart) window.userChart.destroy();
+
+      const skills = [...new Set(filtered.map(e => e.skill).filter(Boolean))];
+      const users = Object.keys(userSkillMap);
+
+      if (chartMode === "per-skill") {
+        const skill = skills[0]; // default to first skill
+        const userData = users.map(userId => {
+          const deductions = userSkillMap[userId][skill];
+          return deductions ? (deductions.reduce((a, b) => a + b, 0) / deductions
