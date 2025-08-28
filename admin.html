@@ -107,13 +107,17 @@
 </head>
 <body>
   <h2>User Dashboard</h2>
-
-  <label for="userSelect">Select User:</label>
+  
+  <a href="dashboard.html" class="back-button">← Back to Dashboard</a>
+  
+<label for="userSelect">Select User:</label>
 <select id="userSelect" onchange="changeUser()">
   <option value="">-- Choose a user --</option>
 </select>
+<div id="userHeader"></div>
 
-  <a href="dashboard.html" class="back-button">← Back to Dashboard</a>
+
+
 
 
 
@@ -166,6 +170,26 @@
     let selectedUserId = null;
     const userMap = {};
 
+db.ref('allSubmissions').once('value').then(snapshot => {
+  snapshot.forEach(child => {
+    const entry = child.val();
+    const uid = entry.userId;
+    const name = entry.userName || "Unnamed User";
+    if (uid && !userMap[uid]) {
+      userMap[uid] = name;
+    }
+  });
+
+  const userSelect = document.getElementById("userSelect");
+  Object.entries(userMap).sort((a, b) => a[1].localeCompare(b[1])).forEach(([uid, name]) => {
+    const option = document.createElement("option");
+    option.value = uid;
+    option.textContent = name;
+    userSelect.appendChild(option);
+  });
+});
+
+
     db.ref('allSubmissions').once('value').then(snapshot => {
   snapshot.forEach(child => {
     const entry = child.val();
@@ -203,16 +227,19 @@ auth.onAuthStateChanged(user => {
 });
 
 
-    function changeUser() {
+function changeUser() {
   selectedUserId = document.getElementById("userSelect").value;
+  const name = userMap[selectedUserId] || "";
+  document.getElementById("userHeader").textContent = name ? `Viewing as: ${name}` : "";
   if (selectedUserId) {
     loadUserSubmissions();
-    renderSubmissionRows(); // optional: show input rows for admin
+    renderSubmissionRows(); // optional: show input rows
   } else {
     document.getElementById("breakdownTableBody").innerHTML = "";
     document.getElementById("submissionRows").innerHTML = "";
   }
 }
+
 
 
     function updateSkillSuggestions(eventType) {
