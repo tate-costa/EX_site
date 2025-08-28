@@ -113,11 +113,16 @@
   <label for="dayRange">Show submissions from the past <span id="dayLabel">14</span> days:</label>
   <input type="range" id="dayRange" min="0" max="60" value="14" oninput="updateDayLabel()" />
   <input id="filterEvent" placeholder="Filter by event" />
+  <label>
+  <input type="checkbox" id="routineFilter" onchange="applyFilters()" />
+  Show only routines
+</label>
+
   <button onclick="applyFilters()">Apply Filters</button>
 
   <table>
     <thead>
-<tr><th></th><th>Event</th><th>Skill</th><th>Value</th><th>Deduction</th><th>Timestamp</th><th>Actions</th></tr>
+<tr><th></th><th>Event</th><th>Skill</th><th>Value</th><th>Deduction</th><th>Routine?</th><th>Timestamp</th><th>Actions</th></tr>
     </thead>
     <tbody id="breakdownTableBody"></tbody>
   </table>
@@ -218,13 +223,15 @@ function renderSubmissionRows() {
       ? `<input class="skillInput" value="${label}" readonly />`
       : `<input placeholder="Skill" class="skillInput" list="skillSuggestions" />`;
 
-    row.innerHTML = `
-      <strong>${label}</strong><br>
-      ${skillInput}
-      <input type="number" placeholder="Value" class="valueInput" list="valueSuggestions" />
-      <input type="number" placeholder="Deduction" class="deductionInput" />
-      <hr>
-    `;
+row.innerHTML = `
+  <strong>${label}</strong><br>
+  ${skillInput}
+  <input type="number" placeholder="Value" class="valueInput" list="valueSuggestions" />
+  <input type="number" placeholder="Deduction" class="deductionInput" />
+  <label><input type="checkbox" class="routineCheckbox" /> Routine?</label>
+  <hr>
+`;
+
     container.appendChild(row);
   });
 }
@@ -240,29 +247,33 @@ function renderSubmissionRows() {
       const skills = document.querySelectorAll(".skillInput");
       const values = document.querySelectorAll(".valueInput");
       const deductions = document.querySelectorAll(".deductionInput");
+      const routines = document.querySelectorAll(".routineCheckbox");
 
-      for (let i = 0; i < skills.length; i++) {
-        const skill = skills[i].value.trim();
-        const value = parseFloat(values[i].value);
-        const deduction = parseFloat(deductions[i].value);
+for (let i = 0; i < skills.length; i++) {
+  const skill = skills[i].value.trim();
+  const value = parseFloat(values[i].value);
+  const deduction = parseFloat(deductions[i].value);
+  const isRoutine = routines[i].checked;
 
-        if (!skill || isNaN(value) || isNaN(deduction)) continue;
+  if (!skill || isNaN(value) || isNaN(deduction)) continue;
 
-        const submission = {
-          userId: currentUserId,
-          userName: userName,
-          event,
-          skill,
-          value,
-          deduction,
-          timestamp: Date.now()
-        };
+  const submission = {
+    userId: currentUserId,
+    userName: userName,
+    event,
+    skill,
+    value,
+    deduction,
+    routine: isRoutine,
+    timestamp: Date.now()
+  };
 
-        const ref = db.ref('users/' + currentUserId + '/submissions').push();
-        const id = ref.key;
-        ref.set(submission);
-        db.ref('allSubmissions/' + id).set(submission);
-      }
+  const ref = db.ref('users/' + currentUserId + '/submissions').push();
+  const id = ref.key;
+  ref.set(submission);
+  db.ref('allSubmissions/' + id).set(submission);
+}
+
 
       alert("Submissions saved!");
       renderSubmissionRows();
@@ -274,14 +285,17 @@ function renderSubmissionRows() {
       applyFilters();
     }
 
-    function applyFilters() {
-      const event = document.getElementById("filterEvent").value;
-      const days = parseInt(document.getElementById("dayRange").value);
-      const cutoff = days > 0 ? Date.now() - (days * 24 * 60 * 60 * 1000) : null;
-      loadUserSubmissions(event, cutoff);
-    }
+function applyFilters() {
+  const event = document.getElementById("filterEvent").value;
+  const days = parseInt(document.getElementById("dayRange").value);
+  const routineOnly = document.getElementById("routineFilter").checked;
+  const cutoff = days > 0 ? Date.now() - (days * 24 * 60 * 60 * 1000) : null;
 
-function loadUserSubmissions(eventFilter = null, dateFilter = null) {
+  loadUserSubmissions(event, cutoff, routineOnly);
+}
+
+
+function loadUserSubmissions(eventFilter = null, dateFilter = null, routineOnly = false) {
   const ref = db.ref('users/' + currentUserId + '/submissions').orderByChild('timestamp');
   ref.on('value', snapshot => {
     const tbody = document.getElementById("breakdownTableBody");
@@ -294,6 +308,7 @@ function loadUserSubmissions(eventFilter = null, dateFilter = null) {
       let valid = true;
       if (eventFilter && data.event !== eventFilter) valid = false;
       if (dateFilter && data.timestamp < dateFilter) valid = false;
+      if (routineOnly && !data.routine) valid = false;
       if (valid) filtered.push({ key, data });
     });
 
@@ -308,18 +323,25 @@ filtered.forEach(({ key, data }) => {
 
   const row = document.createElement("tr");
 
-  row.innerHTML = `
-    <td style="background-color: ${accentColor}; width: 6px;"></td>
-    <td><input value="${event}" data-id="${key}" data-field="event" /></td>
-    <td><input value="${data.skill}" data-id="${key}" data-field="skill" list="skillSuggestions" /></td>
-    <td><input type="number" value="${data.value}" data-id="${key}" data-field="value" list="valueSuggestions" /></td>
-    <td><input type="number" value="${data.deduction}" data-id="${key}" data-field="deduction" /></td>
-    <td>${new Date(data.timestamp).toLocaleString()}</td>
-    <td>
-      <button onclick="updateSubmission('${key}')">💾</button>
-      <button onclick="deleteSubmission('${key}')">🗑️</button>
-    </td>
-  `;
+row.innerHTML = `
+  <td style="background-color: ${accentColor}; width: 6px;"></td>
+  <td><input value="${event}" data-id="${key}" data-field="event" /></td>
+  <td><input value="${data.skill}" data-id="${key}" data-field="skill" list="skillSuggestions" /></td>
+  <td><input type="number" value="${data.value}" data-id="${key}" data-field="value" list="valueSuggestions" /></td>
+  <td><input type="number" value="${data.deduction}" data-id="${key}" data-field="deduction" /></td>
+  <td>
+    <label>
+      <input type="checkbox" ${data.routine ? "checked" : ""} data-id="${key}" data-field="routine" />
+      Routine?
+    </label>
+  </td>
+  <td>${new Date(data.timestamp).toLocaleString()}</td>
+  <td>
+    <button onclick="updateSubmission('${key}')">💾</button>
+    <button onclick="deleteSubmission('${key}')">🗑️</button>
+  </td>
+`;
+
   tbody.appendChild(row);
 });
 
