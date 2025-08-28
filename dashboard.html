@@ -71,9 +71,11 @@
       border-top: 1px solid #ddd;
       margin: 12px 0;
     }
-    .timestamp-group td {
+    
+    .timestamp-group td:first-child {
   border-left: 4px solid #888;
 }
+
   </style>
 </head>
 <body>
@@ -295,7 +297,7 @@ function loadUserSubmissions(eventFilter = null, dateFilter = null) {
 
       const row = document.createElement("tr");
       row.style.backgroundColor = timestampColorMap[ts].color;
-      row.className = timestampColorMap[ts].className;
+      row.className = "timestamp-group";
 
       row.innerHTML = `
         <td><input value="${data.event}" data-id="${key}" data-field="event" /></td>
