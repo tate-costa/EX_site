@@ -71,6 +71,9 @@
       border-top: 1px solid #ddd;
       margin: 12px 0;
     }
+    .timestamp-group td {
+  border-left: 4px solid #888;
+}
   </style>
 </head>
 <body>
@@ -259,41 +262,58 @@ function renderSubmissionRows() {
       loadUserSubmissions(event, cutoff);
     }
 
-    function loadUserSubmissions(eventFilter = null, dateFilter = null) {
-      const ref = db.ref('users/' + currentUserId + '/submissions').orderByChild('timestamp');
-      ref.on('value', snapshot => {
-        const tbody = document.getElementById("breakdownTableBody");
-        tbody.innerHTML = "";
-        const filtered = [];
+function loadUserSubmissions(eventFilter = null, dateFilter = null) {
+  const ref = db.ref('users/' + currentUserId + '/submissions').orderByChild('timestamp');
+  ref.on('value', snapshot => {
+    const tbody = document.getElementById("breakdownTableBody");
+    tbody.innerHTML = "";
+    const filtered = [];
 
-        snapshot.forEach(child => {
-          const data = child.val();
-          const key = child.key;
-          let valid = true;
-          if (eventFilter && data.event !== eventFilter) valid = false;
-          if (dateFilter && data.timestamp < dateFilter) valid = false;
-          if (valid) filtered.push({ key, data });
-        });
+    snapshot.forEach(child => {
+      const data = child.val();
+      const key = child.key;
+      let valid = true;
+      if (eventFilter && data.event !== eventFilter) valid = false;
+      if (dateFilter && data.timestamp < dateFilter) valid = false;
+      if (valid) filtered.push({ key, data });
+    });
 
-        filtered.sort((a, b) => b.data.timestamp - a.data.timestamp);
-        filtered.forEach(({ key, data }, index) => {
-          const row = document.createElement("tr");
-          row.style.backgroundColor = rowColors[index % rowColors.length];
-          row.innerHTML = `
-            <td><input value="${data.event}" data-id="${key}" data-field="event" /></td>
-            <td><input value="${data.skill}" data-id="${key}" data-field="skill" list="skillSuggestions" /></td>
-            <td><input type="number" value="${data.value}" data-id="${key}" data-field="value" list="valueSuggestions" /></td>
-            <td><input type="number" value="${data.deduction}" data-id="${key}" data-field="deduction" /></td>
-            <td>${new Date(data.timestamp).toLocaleString()}</td>
-            <td>
-              <button onclick="updateSubmission('${key}')">💾</button>
-              <button onclick="deleteSubmission('${key}')">🗑️</button>
-            </td>
-          `;
-          tbody.appendChild(row);
-        });
-      });
-    }
+    filtered.sort((a, b) => b.data.timestamp - a.data.timestamp);
+
+    const timestampColorMap = {};
+    let colorIndex = 0;
+
+    filtered.forEach(({ key, data }) => {
+      const ts = data.timestamp;
+      if (!timestampColorMap[ts]) {
+        timestampColorMap[ts] = {
+          color: rowColors[colorIndex % rowColors.length],
+          className: "timestamp-group"
+        };
+        colorIndex++;
+      }
+
+      const row = document.createElement("tr");
+      row.style.backgroundColor = timestampColorMap[ts].color;
+      row.className = timestampColorMap[ts].className;
+
+      row.innerHTML = `
+        <td><input value="${data.event}" data-id="${key}" data-field="event" /></td>
+        <td><input value="${data.skill}" data-id="${key}" data-field="skill" list="skillSuggestions" /></td>
+        <td><input type="number" value="${data.value}" data-id="${key}" data-field="value" list="valueSuggestions" /></td>
+        <td><input type="number" value="${data.deduction}" data-id="${key}" data-field="deduction" /></td>
+        <td>${new Date(ts).toLocaleString()}</td>
+        <td>
+          <button onclick="updateSubmission('${key}')">💾</button>
+          <button onclick="deleteSubmission('${key}')">🗑️</button>
+        </td>
+      `;
+      tbody.appendChild(row);
+    });
+  });
+}
+
+
 
     function updateSubmission(id) {
       const inputs = document.querySelectorAll(`[data-id="${id}"]`);
