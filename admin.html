@@ -121,6 +121,7 @@
 
 
 
+
   <select id="eventSelect" onchange="renderSubmissionRows()">
     <option value="">Select Event</option>
     <option value="FX">FX</option>
@@ -155,6 +156,10 @@
   <button onclick="checkAdminCode()">Go to Admin</button>
 
   <script>
+
+    let selectedUserId = null;
+const userMap = {};
+
     const firebaseConfig = {
       apiKey: "AIzaSyD3cJtk0c42pNAr3tsi_gQ7_9KcQS-HvgA",
       authDomain: "extracker-d2148.firebaseapp.com",
@@ -190,24 +195,7 @@ db.ref('allSubmissions').once('value').then(snapshot => {
 });
 
 
-    db.ref('allSubmissions').once('value').then(snapshot => {
-  snapshot.forEach(child => {
-    const entry = child.val();
-    const uid = entry.userId;
-    const name = entry.userName || "Unnamed User";
-    if (uid && !userMap[uid]) {
-      userMap[uid] = name;
-    }
-  });
 
-  const userSelect = document.getElementById("userSelect");
-  Object.entries(userMap).sort((a, b) => a[1].localeCompare(b[1])).forEach(([uid, name]) => {
-    const option = document.createElement("option");
-    option.value = uid;
-    option.textContent = name;
-    userSelect.appendChild(option);
-  });
-});
 
 
 const eventColorMap = {
@@ -232,13 +220,14 @@ function changeUser() {
   const name = userMap[selectedUserId] || "";
   document.getElementById("userHeader").textContent = name ? `Viewing as: ${name}` : "";
   if (selectedUserId) {
-    loadUserSubmissions();
-    renderSubmissionRows(); // optional: show input rows
+    applyFilters(); // Load their data
+    renderSubmissionRows(); // Optional: show input rows
   } else {
     document.getElementById("breakdownTableBody").innerHTML = "";
     document.getElementById("submissionRows").innerHTML = "";
   }
 }
+
 
 
 
