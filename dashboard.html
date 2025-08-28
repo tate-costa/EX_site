@@ -282,36 +282,39 @@ function loadUserSubmissions(eventFilter = null, dateFilter = null) {
 
     filtered.sort((a, b) => b.data.timestamp - a.data.timestamp);
 
-    const timestampColorMap = {};
-    let colorIndex = 0;
+const timestampColorMap = {};
+let colorIndex = 0;
 
-    filtered.forEach(({ key, data }) => {
-      const ts = data.timestamp;
-      if (!timestampColorMap[ts]) {
-        timestampColorMap[ts] = {
-          color: rowColors[colorIndex % rowColors.length],
-          className: "timestamp-group"
-        };
-        colorIndex++;
-      }
+filtered.forEach(({ key, data }) => {
+  const ts = data.timestamp;
 
-      const row = document.createElement("tr");
-      row.style.backgroundColor = timestampColorMap[ts].color;
-      row.className = "timestamp-group";
+  if (!timestampColorMap[ts]) {
+    const color = rowColors[colorIndex % rowColors.length];
+    timestampColorMap[ts] = {
+      background: color,
+      border: color
+    };
+    colorIndex++;
+  }
 
-      row.innerHTML = `
-        <td><input value="${data.event}" data-id="${key}" data-field="event" /></td>
-        <td><input value="${data.skill}" data-id="${key}" data-field="skill" list="skillSuggestions" /></td>
-        <td><input type="number" value="${data.value}" data-id="${key}" data-field="value" list="valueSuggestions" /></td>
-        <td><input type="number" value="${data.deduction}" data-id="${key}" data-field="deduction" /></td>
-        <td>${new Date(ts).toLocaleString()}</td>
-        <td>
-          <button onclick="updateSubmission('${key}')">💾</button>
-          <button onclick="deleteSubmission('${key}')">🗑️</button>
-        </td>
-      `;
-      tbody.appendChild(row);
-    });
+  const row = document.createElement("tr");
+  row.style.backgroundColor = timestampColorMap[ts].background;
+  row.style.borderLeft = `6px solid ${timestampColorMap[ts].border}`;
+
+  row.innerHTML = `
+    <td><input value="${data.event}" data-id="${key}" data-field="event" /></td>
+    <td><input value="${data.skill}" data-id="${key}" data-field="skill" list="skillSuggestions" /></td>
+    <td><input type="number" value="${data.value}" data-id="${key}" data-field="value" list="valueSuggestions" /></td>
+    <td><input type="number" value="${data.deduction}" data-id="${key}" data-field="deduction" /></td>
+    <td>${new Date(ts).toLocaleString()}</td>
+    <td>
+      <button onclick="updateSubmission('${key}')">💾</button>
+      <button onclick="deleteSubmission('${key}')">🗑️</button>
+    </td>
+  `;
+  tbody.appendChild(row);
+});
+
   });
 }
 
