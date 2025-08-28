@@ -19,9 +19,6 @@
     <option value="HB">HB</option>
   </select>
 
-  <datalist id="skillSuggestions"></datalist>
-  <datalist id="valueSuggestions"></datalist>
-
   <div id="submissionRows"></div>
   <button onclick="submitAll()">Submit All</button>
 
@@ -57,11 +54,6 @@
     const db = firebase.database();
     let currentUserId = null;
 
-    const rowColors = [
-      "#fce4ec", "#e3f2fd", "#e8f5e9", "#fff3e0", "#f3e5f5",
-      "#fbe9e7", "#ede7f6", "#f9fbe7", "#e0f7fa", "#f0f4c3"
-    ];
-
     auth.onAuthStateChanged(user => {
       if (user) {
         currentUserId = user.uid;
@@ -70,38 +62,6 @@
         window.location.href = "index.html";
       }
     });
-
-    function updateSkillSuggestions(eventType) {
-      const ref = db.ref('users/' + currentUserId + '/submissions');
-      ref.once('value').then(snapshot => {
-        const skillSet = new Set();
-        const valueSet = new Set();
-
-        snapshot.forEach(child => {
-          const entry = child.val();
-          if (entry.event === eventType) {
-            if (entry.skill) skillSet.add(entry.skill.trim());
-            if (!isNaN(entry.value)) valueSet.add(entry.value);
-          }
-        });
-
-        const skillList = document.getElementById("skillSuggestions");
-        skillList.innerHTML = "";
-        Array.from(skillSet).sort().forEach(skill => {
-          const option = document.createElement("option");
-          option.value = skill;
-          skillList.appendChild(option);
-        });
-
-        const valueList = document.getElementById("valueSuggestions");
-        valueList.innerHTML = "";
-        Array.from(valueSet).sort((a, b) => a - b).forEach(value => {
-          const option = document.createElement("option");
-          option.value = value;
-          valueList.appendChild(option);
-        });
-      });
-    }
 
     function renderSubmissionRows() {
       const container = document.getElementById("submissionRows");
@@ -115,14 +75,12 @@
         labels = Array.from({ length: 8 }, (_, i) => `Skill ${i + 1}`);
       }
 
-      updateSkillSuggestions(event);
-
       labels.forEach(label => {
         const row = document.createElement("div");
         row.innerHTML = `
           <strong>${label}</strong><br>
-          <input placeholder="Skill" class="skillInput" list="skillSuggestions" />
-          <input type="number" placeholder="Value" class="valueInput" list="valueSuggestions" />
+          <input placeholder="Skill" class="skillInput" />
+          <input type="number" placeholder="Value" class="valueInput" />
           <input type="number" placeholder="Deduction" class="deductionInput" />
           <hr>
         `;
@@ -198,21 +156,50 @@
         });
 
         filtered.sort((a, b) => b.data.timestamp - a.data.timestamp);
-        filtered.forEach(({ key, data }, index) => {
+        filtered.forEach(({ key, data }) => {
           const row = document.createElement("tr");
-          row.style.backgroundColor = rowColors[index % rowColors.length];
           row.innerHTML = `
             <td><input value="${data.event}" data-id="${key}" data-field="event" /></td>
-            <td><input value="${data.skill}" data-id="${key}" data-field="skill" list="skillSuggestions" /></td>
-            <td><input type="number" value="${data.value}" data-id="${key}" data-field="value" list="valueSuggestions" /></td>
+            <td><input value="${data.skill}" data-id="${key}" data-field="skill" /></td>
+            <td><input type="number" value="${data.value}" data-id="${key}" data-field="value" /></td>
             <td><input type="number" value="${data.deduction}" data-id="${key}" data-field="deduction" /></td>
             <td>${new Date(data.timestamp).toLocaleString()}</td>
             <td>
               <button onclick="updateSubmission('${key}')">💾</button>
-          <button onclick="deleteSubmission('${key}')">🗑️</button>
-        </td>
-      `;
-      tbody.appendChild(row);
-    });
-  });
-}
+              <button onclick="deleteSubmission('${key}')">🗑️</button>
+            </td>
+          `;
+          tbody.appendChild(row);
+        });
+      });
+    }
+
+    function updateSubmission(id) {
+      const inputs = document.querySelectorAll(`[data-id="${id}"]`);
+      const updated = {};
+      inputs.forEach(input => {
+        const field = input.getAttribute("data-field");
+        updated[field] = field === "value" || field === "deduction" ? parseFloat(input.value) : input.value;
+      });
+      db.ref('users/' + currentUserId + '/submissions/' + id).update(updated);
+      db.ref('allSubmissions/' + id).update(updated);
+    }
+
+    function deleteSubmission(id) {
+      if (confirm("Delete this submission?")) {
+        db.ref('users/' + currentUserId + '/submissions/' + id).remove();
+        db.ref('allSubmissions/' + id).remove();
+      }
+    }
+
+    function checkAdminCode() {
+      const code = document.getElementById("adminCode").value.trim();
+      if (code === "gymnastics") {
+        window.location.href = "breakdown.html";
+      } else {
+        alert("Invalid code.");
+      }
+    }
+  </script>
+</body>
+</html>
