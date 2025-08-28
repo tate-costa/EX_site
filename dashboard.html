@@ -300,7 +300,8 @@ let colorIndex = 0;
 filtered.forEach(({ key, data }) => {
   const ts = data.timestamp;
 
-  if (!timestampColorMap[ts]) {
+  // Assign a color only once per unique timestamp
+  if (!(ts in timestampColorMap)) {
     timestampColorMap[ts] = rowColors[colorIndex % rowColors.length];
     colorIndex++;
   }
@@ -322,6 +323,7 @@ filtered.forEach(({ key, data }) => {
   `;
   tbody.appendChild(row);
 });
+
 
 
   });
