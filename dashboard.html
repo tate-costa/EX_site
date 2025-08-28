@@ -5,6 +5,73 @@
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-database-compat.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #f9f9fb;
+      padding: 2rem;
+      color: #333;
+    }
+
+    h2 {
+      margin-bottom: 1rem;
+    }
+
+    select, input[type="range"], input[type="text"], input[type="number"], button {
+      margin: 0.5rem 0.5rem 1rem 0;
+      padding: 0.4rem 0.6rem;
+      font-size: 1rem;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+
+    button {
+      background-color: #0077cc;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #005fa3;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0 12px;
+    }
+
+    th {
+      background-color: #e0e0e0;
+      padding: 10px;
+      text-align: left;
+      border-radius: 6px 6px 0 0;
+    }
+
+    td {
+      background-color: white;
+      padding: 10px;
+      border-radius: 0 0 6px 6px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    tr:hover {
+      transform: scale(1.01);
+      transition: transform 0.2s ease;
+    }
+
+    #submissionRows input {
+      margin: 4px 0;
+      width: calc(100% - 12px);
+    }
+
+    hr {
+      border: none;
+      border-top: 1px solid #ddd;
+      margin: 12px 0;
+    }
+  </style>
 </head>
 <body>
   <h2>User Dashboard</h2>
@@ -18,6 +85,9 @@
     <option value="PB">PB</option>
     <option value="HB">HB</option>
   </select>
+
+  <datalist id="skillSuggestions"></datalist>
+  <datalist id="valueSuggestions"></datalist>
 
   <div id="submissionRows"></div>
   <button onclick="submitAll()">Submit All</button>
@@ -54,6 +124,11 @@
     const db = firebase.database();
     let currentUserId = null;
 
+    const rowColors = [
+      "#fce4ec", "#e3f2fd", "#e8f5e9", "#fff3e0", "#f3e5f5",
+      "#fbe9e7", "#ede7f6", "#f9fbe7", "#e0f7fa", "#f0f4c3"
+    ];
+
     auth.onAuthStateChanged(user => {
       if (user) {
         currentUserId = user.uid;
@@ -62,6 +137,38 @@
         window.location.href = "index.html";
       }
     });
+
+    function updateSkillSuggestions(eventType) {
+      const ref = db.ref('users/' + currentUserId + '/submissions');
+      ref.once('value').then(snapshot => {
+        const skillSet = new Set();
+        const valueSet = new Set();
+
+        snapshot.forEach(child => {
+          const entry = child.val();
+          if (entry.event === eventType) {
+            if (entry.skill) skillSet.add(entry.skill.trim());
+            if (!isNaN(entry.value)) valueSet.add(entry.value);
+          }
+        });
+
+        const skillList = document.getElementById("skillSuggestions");
+        skillList.innerHTML = "";
+        Array.from(skillSet).sort().forEach(skill => {
+          const option = document.createElement("option");
+          option.value = skill;
+          skillList.appendChild(option);
+        });
+
+        const valueList = document.getElementById("valueSuggestions");
+        valueList.innerHTML = "";
+        Array.from(valueSet).sort((a, b) => a - b).forEach(value => {
+          const option = document.createElement("option");
+          option.value = value;
+          valueList.appendChild(option);
+        });
+      });
+    }
 
     function renderSubmissionRows() {
       const container = document.getElementById("submissionRows");
@@ -75,12 +182,19 @@
         labels = Array.from({ length: 8 }, (_, i) => `Skill ${i + 1}`);
       }
 
+      updateSkillSuggestions(event);
+
       labels.forEach(label => {
         const row = document.createElement("div");
+        row.style.backgroundColor = "#fff";
+        row.style.borderRadius = "8px";
+        row.style.boxShadow = "0 2px 6px rgba(0,0,0,0.08)";
+        row.style.padding = "12px";
+        row.style.marginBottom = "12px";
         row.innerHTML = `
           <strong>${label}</strong><br>
-          <input placeholder="Skill" class="skillInput" />
-          <input type="number" placeholder="Value" class="valueInput" />
+          <input placeholder="Skill" class="skillInput" list="skillSuggestions" />
+          <input type="number" placeholder="Value" class="valueInput" list="valueSuggestions" />
           <input type="number" placeholder="Deduction" class="deductionInput" />
           <hr>
         `;
@@ -126,7 +240,7 @@
       renderSubmissionRows();
     }
 
-    function updateDayLabel() {
+        function updateDayLabel() {
       const days = document.getElementById("dayRange").value;
       document.getElementById("dayLabel").textContent = days;
       applyFilters();
@@ -156,12 +270,13 @@
         });
 
         filtered.sort((a, b) => b.data.timestamp - a.data.timestamp);
-        filtered.forEach(({ key, data }) => {
+        filtered.forEach(({ key, data }, index) => {
           const row = document.createElement("tr");
+          row.style.backgroundColor = rowColors[index % rowColors.length];
           row.innerHTML = `
             <td><input value="${data.event}" data-id="${key}" data-field="event" /></td>
-            <td><input value="${data.skill}" data-id="${key}" data-field="skill" /></td>
-            <td><input type="number" value="${data.value}" data-id="${key}" data-field="value" /></td>
+            <td><input value="${data.skill}" data-id="${key}" data-field="skill" list="skillSuggestions" /></td>
+            <td><input type="number" value="${data.value}" data-id="${key}" data-field="value" list="valueSuggestions" /></td>
             <td><input type="number" value="${data.deduction}" data-id="${key}" data-field="deduction" /></td>
             <td>${new Date(data.timestamp).toLocaleString()}</td>
             <td>
