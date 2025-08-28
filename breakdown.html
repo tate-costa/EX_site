@@ -71,8 +71,10 @@
     db.ref('allSubmissions').once('value').then(snapshot => {
       snapshot.forEach(child => {
         const entry = child.val();
-        if (entry.userId && entry.userName) {
-          userMap[entry.userId] = entry.userName;
+        const uid = entry.userId;
+        const name = entry.userName || "Unnamed User";
+        if (uid) {
+          userMap[uid] = name;
         }
         allData.push(entry);
       });
