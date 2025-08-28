@@ -276,22 +276,34 @@ function renderSubmissionRows() {
         });
 
         filtered.sort((a, b) => b.data.timestamp - a.data.timestamp);
-        filtered.forEach(({ key, data }, index) => {
-          const row = document.createElement("tr");
-          row.style.backgroundColor = rowColors[index % rowColors.length];
-          row.innerHTML = `
-            <td><input value="${data.event}" data-id="${key}" data-field="event" /></td>
-            <td><input value="${data.skill}" data-id="${key}" data-field="skill" list="skillSuggestions" /></td>
-            <td><input type="number" value="${data.value}" data-id="${key}" data-field="value" list="valueSuggestions" /></td>
-            <td><input type="number" value="${data.deduction}" data-id="${key}" data-field="deduction" /></td>
-            <td>${new Date(data.timestamp).toLocaleString()}</td>
-            <td>
-              <button onclick="updateSubmission('${key}')">💾</button>
-              <button onclick="deleteSubmission('${key}')">🗑️</button>
-            </td>
-          `;
-          tbody.appendChild(row);
-        });
+        filtered.forEach(const timestampColorMap = {};
+let colorIndex = 0;
+
+filtered.forEach(({ key, data }) => {
+  const row = document.createElement("tr");
+  const ts = data.timestamp;
+
+  if (!timestampColorMap[ts]) {
+    timestampColorMap[ts] = rowColors[colorIndex % rowColors.length];
+    colorIndex++;
+  }
+
+  row.style.backgroundColor = timestampColorMap[ts];
+
+  row.innerHTML = `
+    <td><input value="${data.event}" data-id="${key}" data-field="event" /></td>
+    <td><input value="${data.skill}" data-id="${key}" data-field="skill" list="skillSuggestions" /></td>
+    <td><input type="number" value="${data.value}" data-id="${key}" data-field="value" list="valueSuggestions" /></td>
+    <td><input type="number" value="${data.deduction}" data-id="${key}" data-field="deduction" /></td>
+    <td>${new Date(ts).toLocaleString()}</td>
+    <td>
+      <button onclick="updateSubmission('${key}')">💾</button>
+      <button onclick="deleteSubmission('${key}')">🗑️</button>
+    </td>
+  `;
+  tbody.appendChild(row);
+});
+);
       });
     }
 
