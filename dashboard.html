@@ -117,7 +117,7 @@
 
   <table>
     <thead>
-      <tr><th>Event</th><th>Skill</th><th>Value</th><th>Deduction</th><th>Timestamp</th><th>Actions</th></tr>
+      <tr><th></th><th>Event</th><th>Skill</th><th>Value</th><th>Deduction</th><th>Timestamp</th><th>Actions</th></tr>
     </thead>
     <tbody id="breakdownTableBody"></tbody>
   </table>
@@ -301,20 +301,16 @@ filtered.forEach(({ key, data }) => {
   const ts = data.timestamp;
 
   if (!timestampColorMap[ts]) {
-    const color = rowColors[colorIndex % rowColors.length];
-    timestampColorMap[ts] = color;
+    timestampColorMap[ts] = rowColors[colorIndex % rowColors.length];
     colorIndex++;
   }
 
   const accentColor = timestampColorMap[ts];
   const row = document.createElement("tr");
-  row.style.backgroundColor = accentColor;
 
   row.innerHTML = `
-    <td>
-      <div class="timestamp-accent" style="background-color: ${accentColor};"></div>
-      <input value="${data.event}" data-id="${key}" data-field="event" />
-    </td>
+    <td style="background-color: ${accentColor}; width: 6px;"></td>
+    <td><input value="${data.event}" data-id="${key}" data-field="event" /></td>
     <td><input value="${data.skill}" data-id="${key}" data-field="skill" list="skillSuggestions" /></td>
     <td><input type="number" value="${data.value}" data-id="${key}" data-field="value" list="valueSuggestions" /></td>
     <td><input type="number" value="${data.deduction}" data-id="${key}" data-field="deduction" /></td>
