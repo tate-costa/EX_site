@@ -172,8 +172,7 @@ const userMap = {};
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
     const db = firebase.database();
-    let selectedUserId = null;
-    const userMap = {};
+
 
 db.ref('allSubmissions').once('value').then(snapshot => {
   snapshot.forEach(child => {
@@ -219,14 +218,17 @@ function changeUser() {
   selectedUserId = document.getElementById("userSelect").value;
   const name = userMap[selectedUserId] || "";
   document.getElementById("userHeader").textContent = name ? `Viewing as: ${name}` : "";
+
   if (selectedUserId) {
-    applyFilters(); // Load their data
-    renderSubmissionRows(); // Optional: show input rows
+    document.getElementById("eventSelect").value = "FX"; // 👈 Default event
+    renderSubmissionRows(); // 👈 Load input rows for that event
+    applyFilters();         // 👈 Load existing submissions
   } else {
     document.getElementById("breakdownTableBody").innerHTML = "";
     document.getElementById("submissionRows").innerHTML = "";
   }
 }
+
 
 
 
@@ -301,12 +303,15 @@ function renderSubmissionRows() {
 }
 
 
-    function submitAll() {
-      const event = document.getElementById("eventSelect").value;
-      if (!event) return alert("Select an event first.");
+function submitAll() {
+  if (!selectedUserId) return alert("Select a user first."); // ✅ Add this line
 
-      const user = firebase.auth().currentUser;
-      const userName = user.displayName || user.email || "Unknown";
+  const event = document.getElementById("eventSelect").value;
+  if (!event) return alert("Select an event first.");
+
+  const user = firebase.auth().currentUser;
+  const userName = user.displayName || user.email || "Unknown";
+
 
       const skills = document.querySelectorAll(".skillInput");
       const values = document.querySelectorAll(".valueInput");
