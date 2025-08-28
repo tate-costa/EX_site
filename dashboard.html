@@ -170,37 +170,43 @@
       });
     }
 
-    function renderSubmissionRows() {
-      const container = document.getElementById("submissionRows");
-      container.innerHTML = "";
-      const event = document.getElementById("eventSelect").value;
-      let labels = [];
+function renderSubmissionRows() {
+  const container = document.getElementById("submissionRows");
+  container.innerHTML = "";
+  const event = document.getElementById("eventSelect").value;
+  let labels = [];
 
-      if (event === "VT") {
-        labels = ["Preflight", "In Air", "Landing"];
-      } else if (event) {
-        labels = Array.from({ length: 8 }, (_, i) => `Skill ${i + 1}`);
-      }
+  if (event === "VT") {
+    labels = ["Preflight", "In Air", "Landing"];
+  } else if (event) {
+    labels = Array.from({ length: 8 }, (_, i) => `Skill ${i + 1}`);
+  }
 
-      updateSkillSuggestions(event);
+  updateSkillSuggestions(event);
 
-      labels.forEach(label => {
-        const row = document.createElement("div");
-        row.style.backgroundColor = "#fff";
-        row.style.borderRadius = "8px";
-        row.style.boxShadow = "0 2px 6px rgba(0,0,0,0.08)";
-        row.style.padding = "12px";
-        row.style.marginBottom = "12px";
-        row.innerHTML = `
-          <strong>${label}</strong><br>
-          <input placeholder="Skill" class="skillInput" list="skillSuggestions" />
-          <input type="number" placeholder="Value" class="valueInput" list="valueSuggestions" />
-          <input type="number" placeholder="Deduction" class="deductionInput" />
-          <hr>
-        `;
-        container.appendChild(row);
-      });
-    }
+  labels.forEach(label => {
+    const row = document.createElement("div");
+    row.style.backgroundColor = "#fff";
+    row.style.borderRadius = "8px";
+    row.style.boxShadow = "0 2px 6px rgba(0,0,0,0.08)";
+    row.style.padding = "12px";
+    row.style.marginBottom = "12px";
+
+    const skillInput = event === "VT"
+      ? `<input class="skillInput" value="${label}" readonly />`
+      : `<input placeholder="Skill" class="skillInput" list="skillSuggestions" />`;
+
+    row.innerHTML = `
+      <strong>${label}</strong><br>
+      ${skillInput}
+      <input type="number" placeholder="Value" class="valueInput" list="valueSuggestions" />
+      <input type="number" placeholder="Deduction" class="deductionInput" />
+      <hr>
+    `;
+    container.appendChild(row);
+  });
+}
+
 
     function submitAll() {
       const event = document.getElementById("eventSelect").value;
