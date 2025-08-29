@@ -107,12 +107,7 @@
   <datalist id="valueSuggestions"></datalist>
 
   <div id="submissionRows"></div>
- <label style="margin-left: 1rem;">
-  <input type="checkbox" id="routineBatchCheckbox" />
-  Routine?
-</label>
-<button onclick="submitAll()">Submit All</button>
-
+  <button onclick="submitAll()">Submit All</button>
 
   <br><br>
   <label for="dayRange">Show submissions from the past <span id="dayLabel">14</span> days:</label>
@@ -242,48 +237,47 @@ row.innerHTML = `
 }
 
 
-function submitAll() {
-  const event = document.getElementById("eventSelect").value;
-  if (!event) return alert("Select an event first.");
+    function submitAll() {
+      const event = document.getElementById("eventSelect").value;
+      if (!event) return alert("Select an event first.");
 
-  const user = firebase.auth().currentUser;
-  const userName = user.displayName || user.email || "Unknown";
-const isRoutine = document.getElementById("routineBatchCheckbox").checked;
-...
-routine: isRoutine
+      const user = firebase.auth().currentUser;
+      const userName = user.displayName || user.email || "Unknown";
 
-  const skills = document.querySelectorAll(".skillInput");
-  const values = document.querySelectorAll(".valueInput");
-  const deductions = document.querySelectorAll(".deductionInput");
+      const skills = document.querySelectorAll(".skillInput");
+      const values = document.querySelectorAll(".valueInput");
+      const deductions = document.querySelectorAll(".deductionInput");
+      const routines = document.querySelectorAll(".routineCheckbox");
 
-  for (let i = 0; i < skills.length; i++) {
-    const skill = skills[i].value.trim();
-    const value = parseFloat(values[i].value);
-    const deduction = parseFloat(deductions[i].value);
+for (let i = 0; i < skills.length; i++) {
+  const skill = skills[i].value.trim();
+  const value = parseFloat(values[i].value);
+  const deduction = parseFloat(deductions[i].value);
+  const isRoutine = routines[i].checked;
 
-    if (!skill || isNaN(value) || isNaN(deduction)) continue;
+  if (!skill || isNaN(value) || isNaN(deduction)) continue;
 
-    const submission = {
-      userId: currentUserId,
-      userName: userName,
-      event,
-      skill,
-      value,
-      deduction,
-      routine: isRoutine, // ✅ applies to all
-      timestamp: Date.now()
-    };
+  const submission = {
+    userId: currentUserId,
+    userName: userName,
+    event,
+    skill,
+    value,
+    deduction,
+    routine: isRoutine,
+    timestamp: Date.now()
+  };
 
-    const ref = db.ref('users/' + currentUserId + '/submissions').push();
-    const id = ref.key;
-    ref.set(submission);
-    db.ref('allSubmissions/' + id).set(submission);
-  }
-
-  alert("Submissions saved!");
-  renderSubmissionRows();
+  const ref = db.ref('users/' + currentUserId + '/submissions').push();
+  const id = ref.key;
+  ref.set(submission);
+  db.ref('allSubmissions/' + id).set(submission);
 }
 
+
+      alert("Submissions saved!");
+      renderSubmissionRows();
+    }
 
         function updateDayLabel() {
       const days = document.getElementById("dayRange").value;
@@ -335,8 +329,12 @@ row.innerHTML = `
   <td><input value="${data.skill}" data-id="${key}" data-field="skill" list="skillSuggestions" /></td>
   <td><input type="number" value="${data.value}" data-id="${key}" data-field="value" list="valueSuggestions" /></td>
   <td><input type="number" value="${data.deduction}" data-id="${key}" data-field="deduction" /></td>
-<td>${data.routine ? "✅" : ""}</td>
-
+  <td>
+    <label>
+      <input type="checkbox" ${data.routine ? "checked" : ""} data-id="${key}" data-field="routine" />
+      Routine?
+    </label>
+  </td>
   <td>${new Date(data.timestamp).toLocaleString()}</td>
   <td>
     <button onclick="updateSubmission('${key}')">💾</button>
