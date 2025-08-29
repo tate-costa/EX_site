@@ -113,6 +113,10 @@
   <select id="userFilter" onchange="applyFilters()">
     <option value="">All Users</option>
   </select>
+<label>
+  <input type="checkbox" id="routineBreakdownFilter" onchange="applyFilters()" />
+  Show only routines
+</label>
 
   <label>Show submissions from the past <span id="dayLabel">14</span> days:</label>
   <input type="range" id="dayRange" min="0" max="60" value="14" oninput="updateDayLabel()" />
@@ -182,18 +186,21 @@
       applyFilters();
     }
 
-    function applyFilters() {
-      const event = document.getElementById("eventFilter").value;
-      const selectedUserId = document.getElementById("userFilter").value;
-      const days = parseInt(document.getElementById("dayRange").value);
-      const cutoff = days > 0 ? Date.now() - (days * 24 * 60 * 60 * 1000) : null;
+function applyFilters() {
+  const event = document.getElementById("eventFilter").value;
+  const selectedUserId = document.getElementById("userFilter").value;
+  const days = parseInt(document.getElementById("dayRange").value);
+  const routineOnly = document.getElementById("routineBreakdownFilter").checked;
+  const cutoff = days > 0 ? Date.now() - (days * 24 * 60 * 60 * 1000) : null;
 
-      const filtered = allData.filter(entry => {
-        if (event && entry.event !== event) return false;
-        if (selectedUserId && entry.userId !== selectedUserId) return false;
-        if (cutoff && entry.timestamp < cutoff) return false;
-        return true;
-      });
+  const filtered = allData.filter(entry => {
+    if (event && entry.event !== event) return false;
+    if (selectedUserId && entry.userId !== selectedUserId) return false;
+    if (cutoff && entry.timestamp < cutoff) return false;
+    if (routineOnly && !entry.routine) return false;
+    return true;
+  });
+
 
       const skillStats = {};
       let totalDeduction = 0;
