@@ -93,6 +93,28 @@
     .back-button:hover {
       background-color: #005fa3;
     }
+    input[type="password"] {
+  margin: 0.5rem 0.5rem 1rem 0;
+  padding: 0.4rem 0.6rem;
+  font-size: 1rem;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+
+button {
+  background-color: #0077cc;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+button:hover {
+  background-color: #005fa3;
+}
+
   </style>
 </head>
 <body>
@@ -141,7 +163,12 @@
   <div id="diagnostics"></div>
 
   <a href="index.html" class="back-button">← Back to Dashboard</a>
+<hr>
+<label for="adminPassword">Enter Admin Password:</label>
+<input type="password" id="adminPassword" placeholder="Admin password" />
+<button onclick="checkAdminAccess()">Go to Admin</button>
 
+  
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyD3cJtk0c42pNAr3tsi_gQ7_9KcQS-HvgA",
@@ -324,6 +351,15 @@ function applyFilters() {
         document.body.removeChild(link);
       });
     }
+    function checkAdminAccess() {
+  const input = document.getElementById("adminPassword").value.trim();
+  if (input === "TateCosta") {
+    window.location.href = "admin.html";
+  } else {
+    alert("Incorrect password.");
+  }
+}
+
   </script>
 </body>
 </html>
