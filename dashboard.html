@@ -107,6 +107,10 @@
   <datalist id="valueSuggestions"></datalist>
 
   <div id="submissionRows"></div>
+  <label style="margin-left: 1rem;">
+  <input type="checkbox" id="routineBatchCheckbox" />
+  Routine?
+</label>
   <button onclick="submitAll()">Submit All</button>
 
   <br><br>
@@ -228,7 +232,6 @@ row.innerHTML = `
   ${skillInput}
   <input type="number" placeholder="Value" class="valueInput" list="valueSuggestions" />
   <input type="number" placeholder="Deduction" class="deductionInput" />
-  <label><input type="checkbox" class="routineCheckbox" /> Routine?</label>
   <hr>
 `;
 
@@ -247,13 +250,14 @@ row.innerHTML = `
       const skills = document.querySelectorAll(".skillInput");
       const values = document.querySelectorAll(".valueInput");
       const deductions = document.querySelectorAll(".deductionInput");
-      const routines = document.querySelectorAll(".routineCheckbox");
+      const isRoutine = document.getElementById("routineBatchCheckbox").checked;
+
 
 for (let i = 0; i < skills.length; i++) {
   const skill = skills[i].value.trim();
   const value = parseFloat(values[i].value);
   const deduction = parseFloat(deductions[i].value);
-  const isRoutine = routines[i].checked;
+  
 
   if (!skill || isNaN(value) || isNaN(deduction)) continue;
 
