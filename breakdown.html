@@ -222,6 +222,16 @@ button:hover {
 
 function applyFilters() {
   const comparisonMode = document.getElementById("skillComparisonToggle").checked;
+  const userFilter = document.getElementById("userFilter");
+
+// ✅ Lock user filter to "All Users" in comparison mode
+if (comparisonMode) {
+  userFilter.value = "";         // force "All Users"
+  userFilter.disabled = true;   // prevent changes
+} else {
+  userFilter.disabled = false;  // re-enable when not comparing
+}
+
   const skillSelectLabel = document.getElementById("skillSelectLabel");
   const skillSelect = document.getElementById("skillSelect");
 
