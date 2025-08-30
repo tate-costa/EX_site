@@ -144,20 +144,17 @@ button:hover {
   <input type="range" id="dayRange" min="0" max="60" value="14" oninput="updateDayLabel()" />
 
   <button onclick="downloadAllData()">Download All Submissions</button>
+  <label>
+  <input type="checkbox" id="skillComparisonToggle" onchange="applyFilters()" />
+  Skill Comparison Mode
+</label>
 
-  <table>
-    <thead>
-      <tr>
-        <th>Skill</th>
-        <th>Submissions</th>
-        <th>Avg Value</th>
-        <th>Avg Deduction</th>
-        <th>Max Deduction</th>
-        <th>Min Deduction</th>
-      </tr>
-    </thead>
-    <tbody id="breakdownTableBody"></tbody>
-  </table>
+
+ <table>
+  <thead></thead> <!-- Empty, will be filled dynamically -->
+  <tbody id="breakdownTableBody"></tbody>
+</table>
+
 
   <h3>Overall Diagnostics</h3>
   <div id="diagnostics"></div>
@@ -214,6 +211,12 @@ button:hover {
     }
 
 function applyFilters() {
+  const comparisonMode = document.getElementById("skillComparisonToggle").checked;
+  const thead = document.querySelector("table thead");
+thead.innerHTML = comparisonMode
+  ? `<tr><th>Skill</th><th>User</th><th>Submissions</th><th>Avg Deduction</th></tr>`
+  : `<tr><th>Skill</th><th>Submissions</th><th>Avg Value</th><th>Avg Deduction</th><th>Max Deduction</th><th>Min Deduction</th></tr>`;
+
   const event = document.getElementById("eventFilter").value;
   const selectedUserId = document.getElementById("userFilter").value;
   const days = parseInt(document.getElementById("dayRange").value);
@@ -228,6 +231,50 @@ function applyFilters() {
     return true;
   });
 
+if (comparisonMode) {
+  const skillUserMap = {}; // { skill: { userId: { totalDeduction, count } } }
+
+  filtered.forEach(entry => {
+    const skill = entry.skill?.trim();
+    const uid = entry.userId;
+    const deduction = parseFloat(entry.deduction);
+    if (!skill || !uid || isNaN(deduction)) return;
+
+    if (!skillUserMap[skill]) skillUserMap[skill] = {};
+    if (!skillUserMap[skill][uid]) {
+      skillUserMap[skill][uid] = { totalDeduction: 0, count: 0 };
+    }
+
+    skillUserMap[skill][uid].totalDeduction += deduction;
+    skillUserMap[skill][uid].count++;
+  });
+
+  const tbody = document.getElementById("breakdownTableBody");
+  tbody.innerHTML = "";
+
+  Object.entries(skillUserMap).forEach(([skill, userStats]) => {
+    Object.entries(userStats).forEach(([uid, stats]) => {
+      const avg = (stats.totalDeduction / stats.count).toFixed(2);
+      const userName = userMap?.[uid] || uid;
+
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${skill}</td>
+        <td>${userName}</td>
+        <td>${stats.count}</td>
+        <td>${avg}</td>
+      `;
+      tbody.appendChild(row);
+    });
+  });
+
+  // Optional: update diagnostics panel
+  document.getElementById("diagnostics").innerHTML = `
+    <p><strong>Skill Comparison Mode Active</strong></p>
+    <p><strong>Total Submissions:</strong> ${filtered.length}</p>
+  `;
+  return; // ✅ Skip the regular breakdown logic
+}
 
       const skillStats = {};
       let totalDeduction = 0;
