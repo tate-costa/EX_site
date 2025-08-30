@@ -4,6 +4,8 @@
   <title>Breakdown Dashboard</title>
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-database-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
@@ -213,6 +215,10 @@ button:hover {
 
   <h3>Overall Diagnostics</h3>
   <div id="diagnostics"></div>
+
+    <h3>📊 Average Deduction by User</h3>
+<canvas id="deductionChart" height="300"></canvas>
+
 
   <a href="index.html" class="back-button">← Back to Dashboard</a>
 <hr>
@@ -430,6 +436,65 @@ if (comparisonMode) {
         <p><strong>Lowest Deduction:</strong> ${minDeduction}</p>
         <p><strong>Most Frequent Skill:</strong> ${mostFrequent ? mostFrequent[0] + " (" + mostFrequent[1] + ")" : "N/A"}</p>
       `;
+  // ✅ Build user averages for chart
+const userAverages = {}; // { userName: { totalDeduction, count } }
+
+filtered.forEach(entry => {
+  const uid = entry.userId;
+  const name = userMap?.[uid] || uid;
+  const deduction = parseFloat(entry.deduction);
+  if (!uid || isNaN(deduction)) return;
+
+  if (!userAverages[name]) userAverages[name] = { totalDeduction: 0, count: 0 };
+  userAverages[name].totalDeduction += deduction;
+  userAverages[name].count++;
+});
+
+const chartLabels = [];
+const chartData = [];
+
+Object.entries(userAverages).forEach(([name, stats]) => {
+  chartLabels.push(name);
+  chartData.push((stats.totalDeduction / stats.count).toFixed(2));
+});
+
+// ✅ Render chart
+const ctx = document.getElementById("deductionChart").getContext("2d");
+if (window.deductionChart) window.deductionChart.destroy(); // clear previous chart
+
+window.deductionChart = new Chart(ctx, {
+  type: "bar",
+  data: {
+    labels: chartLabels,
+    datasets: [{
+      label: "Avg Deduction",
+      data: chartData,
+      backgroundColor: "#0077cc",
+      borderRadius: 6
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      title: {
+        display: true,
+        text: "Average Deduction by User",
+        font: { size: 16 }
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        title: { display: true, text: "Deduction" }
+      },
+      x: {
+        title: { display: true, text: "User" }
+      }
+    }
+  }
+});
+
     }
 
     function downloadAllData() {
