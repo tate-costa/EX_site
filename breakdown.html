@@ -148,14 +148,6 @@ button:hover {
   <input type="checkbox" id="skillComparisonToggle" onchange="applyFilters()" />
   Skill Comparison Mode
 </label>
-  
-  <label id="skillSelectLabel" style="display: none;">
-  Compare Skill:
-  <select id="skillSelect" onchange="applyFilters()">
-    <option value="">-- Select Skill --</option>
-  </select>
-</label>
-
 
 
  <table>
@@ -238,83 +230,6 @@ thead.innerHTML = comparisonMode
     if (routineOnly && !entry.routine) return false;
     return true;
   });
-
-  const comparisonMode = document.getElementById("skillComparisonToggle").checked;
-const skillSelectLabel = document.getElementById("skillSelectLabel");
-const skillSelect = document.getElementById("skillSelect");
-
-if (comparisonMode) {
-  // Show dropdown
-  skillSelectLabel.style.display = "inline-block";
-
-  // Populate dropdown with unique skills from filtered data
-  const skillSet = new Set();
-  filtered.forEach(entry => {
-    const skill = entry.skill?.trim();
-    if (skill) skillSet.add(skill);
-  });
-
-  // Clear and repopulate options
-  skillSelect.innerHTML = `<option value="">-- Select Skill --</option>`;
-  Array.from(skillSet).sort().forEach(skill => {
-    const option = document.createElement("option");
-    option.value = skill;
-    option.textContent = skill;
-    skillSelect.appendChild(option);
-  });
-
-  const selectedSkill = skillSelect.value;
-  if (!selectedSkill) {
-    document.getElementById("breakdownTableBody").innerHTML = "";
-    document.getElementById("diagnostics").innerHTML = `<p>Select a skill to compare.</p>`;
-    return;
-  }
-
-  // ✅ Now compare users on the selected skill
-  const skillUserMap = {};
-  filtered.forEach(entry => {
-    const skill = entry.skill?.trim();
-    const uid = entry.userId;
-    const deduction = parseFloat(entry.deduction);
-    if (skill !== selectedSkill || !uid || isNaN(deduction)) return;
-
-    if (!skillUserMap[uid]) {
-      skillUserMap[uid] = { totalDeduction: 0, count: 0 };
-    }
-
-    skillUserMap[uid].totalDeduction += deduction;
-    skillUserMap[uid].count++;
-  });
-
-  const thead = document.querySelector("table thead");
-  thead.innerHTML = `<tr><th>User</th><th>Submissions</th><th>Avg Deduction</th></tr>`;
-
-  const tbody = document.getElementById("breakdownTableBody");
-  tbody.innerHTML = "";
-
-  Object.entries(skillUserMap).forEach(([uid, stats]) => {
-    const avg = (stats.totalDeduction / stats.count).toFixed(2);
-    const userName = userMap?.[uid] || uid;
-
-    const row = document.createElement("tr");
-    row.innerHTML = `
-      <td>${userName}</td>
-      <td>${stats.count}</td>
-      <td>${avg}</td>
-    `;
-    tbody.appendChild(row);
-  });
-
-  document.getElementById("diagnostics").innerHTML = `
-    <p><strong>Skill Comparison:</strong> ${selectedSkill}</p>
-    <p><strong>Total Submissions:</strong> ${filtered.length}</p>
-  `;
-  return;
-} else {
-  // Hide dropdown if not in comparison mode
-  skillSelectLabel.style.display = "none";
-}
-
 
 if (comparisonMode) {
   const skillUserMap = {}; // { skill: { userId: { totalDeduction, count } } }
