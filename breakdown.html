@@ -5,6 +5,8 @@
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-database-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@1.1.0"></script>
+
 
   <style>
     body {
@@ -332,6 +334,21 @@ if (comparisonMode) {
       document.getElementById("diagnostics").innerHTML = `<p>Select a skill to compare.</p>`;
       return;
     }
+    
+ let totalValue = 0;
+let valueCount = 0;
+
+filtered.forEach(entry => {
+  const skill = entry.skill?.trim();
+  const value = parseFloat(entry.value);
+  if (skill === selectedSkill && !isNaN(value)) {
+    totalValue += value;
+    valueCount++;
+  }
+});
+
+const skillAvgValue = valueCount > 0 ? (totalValue / valueCount).toFixed(2) : null;
+
 
     // ✅ Compare users on selected skill
     const skillUserMap = {};
@@ -398,26 +415,48 @@ window.comparisonChart = new Chart(ctx, {
       borderRadius: 6
     }]
   },
-  options: {
-    responsive: true,
-    plugins: {
-      legend: { display: false },
-      title: {
-        display: true,
-        text: `Average Deduction for "${selectedSkill}"`,
-        font: { size: 16 }
-      }
+options: {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: { display: false },
+    title: {
+      display: true,
+      text: `Average Deduction for "${selectedSkill}"`,
+      font: { size: 16 }
     },
-    scales: {
-      y: {
-        beginAtZero: true,
-        title: { display: true, text: "Deduction" }
-      },
-      x: {
-        title: { display: true, text: "User" }
+    annotation: {
+      annotations: {
+        avgValueLine: {
+          type: 'line',
+          scaleID: 'y',
+          value: skillAvgValue,
+          borderColor: '#888',
+          borderWidth: 2,
+          borderDash: [4, 4],
+          label: {
+            enabled: true,
+            content: `Avg Value: ${skillAvgValue}`,
+            position: 'end',
+            backgroundColor: '#888',
+            color: '#fff',
+            font: { weight: 'bold' }
+          }
+        }
       }
     }
+  },
+  scales: {
+    y: {
+      beginAtZero: true,
+      title: { display: true, text: "Avg Deduction" }
+    },
+    x: {
+      title: { display: true, text: "User" }
+    }
   }
+}
+
 });
 
 
