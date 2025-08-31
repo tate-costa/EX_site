@@ -301,7 +301,7 @@ if (comparisonMode) {
   const thead = document.querySelector("table thead");
   thead.innerHTML = comparisonMode
     ? `<tr><th>User</th><th>Submissions</th><th>Avg Deduction</th></tr>`
-    : `<tr><th>Skill</th><th>Submissions</th><th>Avg Value</th><th>Avg Deduction</th><th>Max Deduction</th><th>Min Deduction</th></tr>`;
+    : `<tr><th>Skill</th><th>Submissions</th><th>Value</th><th>Avg Deduction</th><th>Max Deduction</th><th>Min Deduction</th></tr>`;
 
   const event = document.getElementById("eventFilter").value;
   const selectedUserId = document.getElementById("userFilter").value;
@@ -446,7 +446,7 @@ options: {
           borderDash: [4, 4],
           label: {
             enabled: true,
-            content: `Avg Value: ${skillAvgValue}`,
+            content: `Value: ${skillAvgValue}`,
             position: 'end',
             backgroundColor: '#888',
             color: '#fff',
