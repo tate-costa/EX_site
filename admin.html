@@ -219,7 +219,7 @@ function changeUser() {
   document.getElementById("userHeader").textContent = name ? `Viewing as: ${name}` : "";
 
   if (selectedUserId) {
-    document.getElementById("eventSelect").value = "FX"; // 👈 Default event
+    // 👈 Default event
     renderSubmissionRows(); // 👈 Load input rows for that event
     applyFilters();         // 👈 Load existing submissions
   } else {
