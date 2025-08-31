@@ -378,6 +378,7 @@ Object.entries(skillUserMap).forEach(([uid, stats]) => {
 // ✅ Show chart elements
 document.getElementById("chartTitle").style.display = "block";
 document.getElementById("comparisonChart").style.display = "block";
+console.log("Chart should render now:", chartLabels, chartData);
 
 // ✅ Render chart
 const ctx = document.getElementById("comparisonChart").getContext("2d");
