@@ -382,7 +382,10 @@ console.log("Chart should render now:", chartLabels, chartData);
 
 // ✅ Render chart
 const ctx = document.getElementById("comparisonChart").getContext("2d");
-if (window.comparisonChart) window.comparisonChart.destroy(); // clear previous chart
+if (window.comparisonChart instanceof Chart) {
+  window.comparisonChart.destroy();
+}
+ // clear previous chart
 
 window.comparisonChart = new Chart(ctx, {
   type: "bar",
