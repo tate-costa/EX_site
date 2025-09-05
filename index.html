@@ -104,11 +104,7 @@
 
   <p>This is your landing hub. From here, you can navigate to your dashboard, manage events, or explore new features.</p>
 
-<nav>
-  <a href="dashboard.html" id="dashboardLink">Go to Dashboard</a>
-  <a href="editroutines.html" id="editRoutinesLink" style="display: none;">Edit My Routines</a>
-  <a href="signup.html">Sign Up / Log In</a>
-</nav>
+
 
 
   <script>
@@ -129,24 +125,29 @@
 
   // Restore previous selection
   const savedUserId = localStorage.getItem("activeUserId");
-  if (savedUserId) {
-    userSelector.value = savedUserId;
+if (savedUserId) {
+  userSelector.value = savedUserId;
+  dashboardLink.style.display = "inline-block";
+  editRoutinesLink.style.display = "inline-block";
+  welcomeEl.textContent = `🤸‍♂️ Welcome, ${savedUserId.replace(/_/g, ' ')}`;
+}
+
+
+userSelector.addEventListener("change", () => {
+  const selectedUser = userSelector.value;
+  if (selectedUser) {
+    localStorage.setItem("activeUserId", selectedUser);
     dashboardLink.style.display = "inline-block";
     editRoutinesLink.style.display = "inline-block";
+    welcomeEl.textContent = `🤸‍♂️ Welcome, ${selectedUser.replace(/_/g, ' ')}`;
+  } else {
+    localStorage.removeItem("activeUserId");
+    dashboardLink.style.display = "none";
+    editRoutinesLink.style.display = "none";
+    welcomeEl.textContent = "🤸‍♂️ Welcome, guest! Please select your name.";
   }
+});
 
-  userSelector.addEventListener("change", () => {
-    const selectedUser = userSelector.value;
-    if (selectedUser) {
-      localStorage.setItem("activeUserId", selectedUser);
-      dashboardLink.style.display = "inline-block";
-      editRoutinesLink.style.display = "inline-block";
-    } else {
-      localStorage.removeItem("activeUserId");
-      dashboardLink.style.display = "none";
-      editRoutinesLink.style.display = "none";
-    }
-  });
 
   </script>
 </body>
