@@ -77,10 +77,12 @@
 
   <p>This is your landing hub. From here, you can navigate to your dashboard, manage events, or explore new features.</p>
 
-  <nav>
-    <a href="dashboard.html" id="dashboardLink">Go to Dashboard</a>
-    <a href="signup.html">Sign Up / Log In</a>
-  </nav>
+<nav>
+  <a href="dashboard.html" id="dashboardLink">Go to Dashboard</a>
+  <a href="editroutines.html" id="editRoutinesLink" style="display: none;">Edit My Routines</a>
+  <a href="signup.html">Sign Up / Log In</a>
+</nav>
+
 
   <script>
     const firebaseConfig = {
@@ -96,19 +98,22 @@
     const welcomeEl = document.getElementById("welcomeUser");
     const loginBtn = document.getElementById("loginBtn");
     const dashboardLink = document.getElementById("dashboardLink");
+    const editRoutinesLink = document.getElementById("editRoutinesLink");
 
-    auth.onAuthStateChanged(user => {
-      if (user) {
-        welcomeEl.textContent = `🤸‍♂️ Welcome back, ${user.displayName || user.email}`;
-        loginBtn.style.display = "none";
-        dashboardLink.style.display = "inline-block";
+auth.onAuthStateChanged(user => {
+  if (user) {
+    welcomeEl.textContent = `🤸‍♂️ Welcome back, ${user.displayName || user.email}`;
+    loginBtn.style.display = "none";
+    dashboardLink.style.display = "inline-block";
+    editRoutinesLink.style.display = "inline-block"; // Show new button
+  } else {
+    welcomeEl.textContent = "🤸‍♂️ Welcome, guest! Please sign in to access your dashboard.";
+    loginBtn.style.display = "inline-block";
+    dashboardLink.style.display = "none";
+    editRoutinesLink.style.display = "none"; // Hide new button
+  }
+});
 
-      } else {
-        welcomeEl.textContent = "🤸‍♂️ Welcome, guest! Please sign in to access your dashboard.";
-        loginBtn.style.display = "inline-block";
-        dashboardLink.style.display = "none";
-      }
-    });
 
     loginBtn.addEventListener("click", () => {
       const provider = new firebase.auth.GoogleAuthProvider();
