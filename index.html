@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>EX Tracker - Home</title>
   <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-auth-compat.js"></script>
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
@@ -31,19 +30,11 @@
       font-size: 1.1rem;
     }
 
-    #loginBtn {
-      padding: 10px 20px;
-      background-color: #0077cc;
-      color: white;
-      border: none;
-      border-radius: 6px;
+    select {
+      padding: 0.5rem;
       font-size: 1rem;
-      cursor: pointer;
+      border-radius: 6px;
       margin-bottom: 1rem;
-    }
-
-    #loginBtn:hover {
-      background-color: #005fa3;
     }
 
     nav {
@@ -66,13 +57,15 @@
       background-color: #ddd;
     }
 
-    #dashboardLink {
+    #dashboardLink,
+    #editRoutinesLink {
       display: none;
     }
   </style>
 </head>
 <body>
-  <h1 id="welcomeUser">🤸‍♂️ Loading...</h1>
+  <h1 id="welcomeUser">🤸‍♂️ Welcome, guest! Please select your name.</h1>
+
   <label for="userSelector">Select Your Name:</label>
   <select id="userSelector">
     <option value="">-- Choose User --</option>
@@ -95,17 +88,13 @@
     <option value="gavin_doherty">Gavin Doherty</option>
     <option value="alex_karadzov">Alex Karadzov</option>
   </select>
-  <div style="margin-top: 1rem;">
+
   <nav>
-    <a href="dashboard.html" id="dashboardLink" style="display: none;">Go to Dashboard</a>
-    <a href="editroutines.html" id="editRoutinesLink" style="display: none;">Edit My Routines</a>
+    <a href="dashboard.html" id="dashboardLink">Go to Dashboard</a>
+    <a href="editroutines.html" id="editRoutinesLink">Edit My Routines</a>
   </nav>
-</div>
 
   <p>This is your landing hub. From here, you can navigate to your dashboard, manage events, or explore new features.</p>
-
-
-
 
   <script>
     const firebaseConfig = {
@@ -116,39 +105,34 @@
     };
 
     firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
 
     const welcomeEl = document.getElementById("welcomeUser");
-  const userSelector = document.getElementById("userSelector");
-  const dashboardLink = document.getElementById("dashboardLink");
-  const editRoutinesLink = document.getElementById("editRoutinesLink");
+    const userSelector = document.getElementById("userSelector");
+    const dashboardLink = document.getElementById("dashboardLink");
+    const editRoutinesLink = document.getElementById("editRoutinesLink");
 
-  // Restore previous selection
-  const savedUserId = localStorage.getItem("activeUserId");
-if (savedUserId) {
-  userSelector.value = savedUserId;
-  dashboardLink.style.display = "inline-block";
-  editRoutinesLink.style.display = "inline-block";
-  welcomeEl.textContent = `🤸‍♂️ Welcome, ${savedUserId.replace(/_/g, ' ')}`;
-}
+    const savedUserId = localStorage.getItem("activeUserId");
+    if (savedUserId) {
+      userSelector.value = savedUserId;
+      dashboardLink.style.display = "inline-block";
+      editRoutinesLink.style.display = "inline-block";
+      welcomeEl.textContent = `🤸‍♂️ Welcome, ${savedUserId.replace(/_/g, ' ')}`;
+    }
 
-
-userSelector.addEventListener("change", () => {
-  const selectedUser = userSelector.value;
-  if (selectedUser) {
-    localStorage.setItem("activeUserId", selectedUser);
-    dashboardLink.style.display = "inline-block";
-    editRoutinesLink.style.display = "inline-block";
-    welcomeEl.textContent = `🤸‍♂️ Welcome, ${selectedUser.replace(/_/g, ' ')}`;
-  } else {
-    localStorage.removeItem("activeUserId");
-    dashboardLink.style.display = "none";
-    editRoutinesLink.style.display = "none";
-    welcomeEl.textContent = "🤸‍♂️ Welcome, guest! Please select your name.";
-  }
-});
-
-
+    userSelector.addEventListener("change", () => {
+      const selectedUser = userSelector.value;
+      if (selectedUser) {
+        localStorage.setItem("activeUserId", selectedUser);
+        dashboardLink.style.display = "inline-block";
+        editRoutinesLink.style.display = "inline-block";
+        welcomeEl.textContent = `🤸‍♂️ Welcome, ${selectedUser.replace(/_/g, ' ')}`;
+      } else {
+        localStorage.removeItem("activeUserId");
+        dashboardLink.style.display = "none";
+        editRoutinesLink.style.display = "none";
+        welcomeEl.textContent = "🤸‍♂️ Welcome, guest! Please select your name.";
+      }
+    });
   </script>
 </body>
 </html>
