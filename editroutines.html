@@ -1,12 +1,248 @@
-<!-- editroutines.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <title>Edit My Routines</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      padding: 2rem;
+      background-color: #f9f9fb;
+      color: #333;
+    }
+    h2 {
+      color: #0077cc;
+    }
+    .event-block {
+      margin-bottom: 1.5rem;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .event-header {
+      background-color: #eee;
+      padding: 0.75rem 1rem;
+      cursor: pointer;
+      font-weight: bold;
+      color: #0077cc;
+    }
+    .event-header:hover {
+      background-color: #ddd;
+    }
+    .skill-set {
+      display: none;
+      padding: 1rem;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+    }
+    input[type="text"], input[type="number"] {
+      padding: 0.5rem;
+      font-size: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      width: 100%;
+    }
+    button {
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      background-color: #0077cc;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 1rem;
+      margin-right: 1rem;
+    }
+    button:hover {
+      background-color: #005fa3;
+    }
+    #saveMessage {
+      margin-top: 1rem;
+      color: green;
+      font-weight: bold;
+    }
+  </style>
 </head>
 <body>
-  <h1>Edit Your Routines</h1>
-  <p>Here you'll be able to view, modify, and save your exercise routines.</p>
+  <h2>Edit Your Routines</h2>
+  <div id="eventsContainer"></div>
+  <div id="saveMessage"></div>
+  <div style="margin-top: 1rem;">
+    <button onclick="saveSkillSets()">💾 Save</button>
+    <button onclick="saveAndGoToDashboard()">📊 Go to Dashboard</button>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
+    import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBEvPhZMwiIvrNp3aGJYwJaRxIbUsFAexA",
+      authDomain: "extracker2-6ee45.firebaseapp.com",
+      projectId: "extracker2-6ee45",
+      storageBucket: "extracker2-6ee45.appspot.com",
+      messagingSenderId: "353228863394",
+      appId: "1:353228863394:web:56640ef8429be3dbd564fb",
+      measurementId: "G-BB724PSCVT"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const events = ["FX", "PH", "SR", "PB", "HB", "VT"];
+    const container = document.getElementById("eventsContainer");
+    const skillBlocks = {};
+
+    function createSkillRow(label) {
+      const skillInput = document.createElement("input");
+      skillInput.type = "text";
+      skillInput.placeholder = label;
+      skillInput.className = "skill-name";
+
+      const valueInput = document.createElement("input");
+      valueInput.type = "number";
+      valueInput.placeholder = `Value for ${label}`;
+      valueInput.className = "skill-value";
+
+      const wrapper = document.createElement("div");
+      wrapper.appendChild(skillInput);
+      wrapper.appendChild(valueInput);
+      return wrapper;
+    }
+
+    function buildEventBlocks() {
+      events.forEach(event => {
+        const block = document.createElement("div");
+        block.className = "event-block";
+        block.dataset.event = event;
+
+        const header = document.createElement("div");
+        header.className = "event-header";
+        header.textContent = event;
+        block.appendChild(header);
+
+        const skipToggle = document.createElement("label");
+        skipToggle.style.display = "block";
+        skipToggle.style.margin = "0.5rem 1rem";
+        skipToggle.innerHTML = `
+          <input type="checkbox" class="skip-event" />
+          I don’t do this event
+        `;
+        block.appendChild(skipToggle);
+
+        const skillSet = document.createElement("div");
+        skillSet.className = "skill-set";
+        block.appendChild(skillSet);
+
+        const checkbox = skipToggle.querySelector("input");
+        checkbox.addEventListener("change", () => {
+          const disabled = checkbox.checked;
+          skillSet.querySelectorAll("input").forEach(input => {
+            input.disabled = disabled;
+          });
+        });
+
+        header.addEventListener("click", () => {
+          skillSet.style.display = skillSet.style.display === "grid" ? "none" : "grid";
+          skillSet.style.gridTemplateColumns = "1fr 1fr";
+        });
+
+        if (event === "VT") {
+          ["VT 1", "VT 2"].forEach(label => {
+            skillSet.appendChild(createSkillRow(label));
+          });
+        } else {
+          for (let i = 0; i < 7; i++) {
+            skillSet.appendChild(createSkillRow(`Skill ${i + 1}`));
+          }
+          skillSet.appendChild(createSkillRow("Dismount"));
+          skillSet.appendChild(createSkillRow("Upgrade 1"));
+          skillSet.appendChild(createSkillRow("Upgrade 2"));
+        }
+
+        container.appendChild(block);
+        skillBlocks[event] = skillSet;
+      });
+    }
+
+    function preloadSkills(uid) {
+      const docRef = doc(db, "inputSets", uid);
+      getDoc(docRef).then(docSnap => {
+        if (docSnap.exists()) {
+          const savedSkills = docSnap.data();
+          Object.entries(savedSkills).forEach(([event, skills]) => {
+            const skillSet = skillBlocks[event];
+            if (!skillSet) return;
+
+            const skillInputs = skillSet.querySelectorAll(".skill-name");
+            const valueInputs = skillSet.querySelectorAll(".skill-value");
+
+            skills.forEach((entry, i) => {
+              if (skillInputs[i]) skillInputs[i].value = entry.skill;
+              if (valueInputs[i]) valueInputs[i].value = entry.value;
+            });
+          });
+        }
+      }).catch(error => {
+        console.error("Error loading skills:", error);
+      });
+    }
+
+    function saveSkillSets(redirect = false) {
+      const skillData = {};
+
+      document.querySelectorAll(".event-block").forEach(block => {
+        const event = block.dataset.event;
+        const skip = block.querySelector(".skip-event")?.checked;
+        if (skip) return;
+
+        const names = block.querySelectorAll(".skill-name");
+        const values = block.querySelectorAll(".skill-value");
+
+        skillData[event] = [];
+
+        for (let i = 0; i < names.length; i++) {
+          const name = names[i].value.trim();
+          const value = parseFloat(values[i].value);
+          if (name && !isNaN(value)) {
+            skillData[event].push({ skill: name, value });
+          }
+        }
+      });
+
+      const uid = auth.currentUser?.uid;
+      if (!uid) return alert("User not authenticated.");
+
+      setDoc(doc(db, "inputSets", uid), skillData)
+        .then(() => {
+          if (redirect) {
+            window.location.href = "dashboardv2.html";
+          } else {
+            const msg = document.getElementById("saveMessage");
+            msg.textContent = "✅ Skills saved successfully!";
+            setTimeout(() => msg.textContent = "", 3000);
+          }
+        })
+        .catch(error => {
+          console.error("Error saving skill sets:", error);
+          alert("Failed to save. Please try again.");
+        });
+    }
+
+    window.saveSkillSets = saveSkillSets;
+    window.saveAndGoToDashboard = () => saveSkillSets(true);
+
+    onAuthStateChanged(auth, user => {
+      if (user) {
+        buildEventBlocks();
+        preloadSkills(user.uid);
+      } else {
+        alert("You must be signed in to edit routines.");
+        window.location.href = "indexv2.html";
+      }
+    });
+  </script>
 </body>
 </html>
