@@ -108,6 +108,11 @@
 </head>
 <body>
   <h2>User Dashboard</h2>
+  
+  <div id="userHeader" style="margin-bottom: 1rem; font-size: 1.1rem; color: #0077cc;">
+  Loading user info...
+</div>
+
 
   <select id="eventSelect" onchange="renderSubmissionRows()">
     <option value="">Select Event</option>
@@ -183,6 +188,8 @@ if (!activeUserId) {
   window.location.href = "index.html";
 }
 const currentUserId = activeUserId;
+ document.getElementById("userHeader").textContent = `👤 Viewing data for: ${currentUserId.replace(/_/g, ' ')}`;
+
 loadUserSubmissions();
 
 
