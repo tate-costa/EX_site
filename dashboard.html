@@ -186,37 +186,39 @@ const currentUserId = activeUserId;
 loadUserSubmissions();
 
 
-    function updateSkillSuggestions(eventType) {
-      const ref = db.ref('users/' + currentUserId + '/submissions');
-      ref.once('value').then(snapshot => {
-        const skillSet = new Set();
-        const valueSet = new Set();
+import { collection, getDocs } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
 
-        snapshot.forEach(child => {
-          const entry = child.val();
-          if (entry.event === eventType) {
-            if (entry.skill) skillSet.add(entry.skill.trim());
-            if (!isNaN(entry.value)) valueSet.add(entry.value);
-          }
-        });
+async function updateSkillSuggestions(eventType) {
+  const skillSet = new Set();
+  const valueSet = new Set();
 
-        const skillList = document.getElementById("skillSuggestions");
-        skillList.innerHTML = "";
-        Array.from(skillSet).sort().forEach(skill => {
-          const option = document.createElement("option");
-          option.value = skill;
-          skillList.appendChild(option);
-        });
-
-        const valueList = document.getElementById("valueSuggestions");
-        valueList.innerHTML = "";
-        Array.from(valueSet).sort((a, b) => a - b).forEach(value => {
-          const option = document.createElement("option");
-          option.value = value;
-          valueList.appendChild(option);
-        });
-      });
+  const snapshot = await getDocs(collection(db, "submissions"));
+  snapshot.forEach(docSnap => {
+    const entry = docSnap.data();
+    if (entry.userId === currentUserId && entry.event === eventType) {
+      if (entry.skill) skillSet.add(entry.skill.trim());
+      if (!isNaN(entry.value)) valueSet.add(entry.value);
     }
+  });
+
+  const skillList = document.getElementById("skillSuggestions");
+  skillList.innerHTML = "";
+  Array.from(skillSet).sort().forEach(skill => {
+    const option = document.createElement("option");
+    option.value = skill;
+    skillList.appendChild(option);
+  });
+
+  const valueList = document.getElementById("valueSuggestions");
+  valueList.innerHTML = "";
+  Array.from(valueSet).sort((a, b) => a - b).forEach(value => {
+    const option = document.createElement("option");
+    option.value = value;
+    valueList.appendChild(option);
+  });
+}
+
+
 
 function renderSubmissionRows() {
   const container = document.getElementById("submissionRows");
