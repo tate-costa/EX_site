@@ -2,9 +2,10 @@
 <html>
 <head>
   <title>User Dashboard</title>
-  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.3.1/firebase-database-compat.js"></script>
+  <script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js";
+  import { getFirestore, collection, doc, setDoc, getDocs, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
+  </script>
   <style>
 
     .timestamp-accent {
@@ -161,9 +162,9 @@
       appId: "1:203023038950:web:bc5cc0633c129e0cb2fe27",
       measurementId: "G-XPQ7THPEKD"
     };
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.database();
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
     let currentUserId = null;
 
 const eventColorMap = {
@@ -176,14 +177,14 @@ const eventColorMap = {
 };
 
 
-    auth.onAuthStateChanged(user => {
-      if (user) {
-        currentUserId = user.uid;
-        loadUserSubmissions();
-      } else {
-        window.location.href = "index.html";
-      }
-    });
+const activeUserId = localStorage.getItem("activeUserId");
+if (!activeUserId) {
+  alert("No user selected. Please return to the homepage and choose your name.");
+  window.location.href = "index.html";
+}
+const currentUserId = activeUserId;
+loadUserSubmissions();
+
 
     function updateSkillSuggestions(eventType) {
       const ref = db.ref('users/' + currentUserId + '/submissions');
@@ -293,10 +294,9 @@ for (let i = 0; i < skills.length; i++) {
     timestamp: Date.now()
   };
 
-  const ref = db.ref('users/' + currentUserId + '/submissions').push();
-  const id = ref.key;
-  ref.set(submission);
-  db.ref('allSubmissions/' + id).set(submission);
+const id = `${Date.now()}_${Math.random().toString(36).slice(2)}`;
+await setDoc(doc(db, "submissions", id), submission);
+
 }
 
 
@@ -321,15 +321,13 @@ function applyFilters() {
 
 
 function loadUserSubmissions(eventFilter = null, dateFilter = null, routineOnly = false) {
-  const ref = db.ref('users/' + currentUserId + '/submissions').orderByChild('timestamp');
-  ref.on('value', snapshot => {
-    const tbody = document.getElementById("breakdownTableBody");
-    tbody.innerHTML = "";
-    const filtered = [];
+const snapshot = await getDocs(collection(db, "submissions"));
+snapshot.forEach(docSnap => {
+  const data = docSnap.data();
+  const key = docSnap.id;
+  if (data.userId !== currentUserId) return;
 
-    snapshot.forEach(child => {
-      const data = child.val();
-      const key = child.key;
+
       let valid = true;
       if (eventFilter && data.event !== eventFilter) valid = false;
       if (dateFilter && data.timestamp < dateFilter) valid = false;
@@ -384,14 +382,14 @@ row.innerHTML = `
         const field = input.getAttribute("data-field");
         updated[field] = field === "value" || field === "deduction" ? parseFloat(input.value) : input.value;
       });
-      db.ref('users/' + currentUserId + '/submissions/' + id).update(updated);
-      db.ref('allSubmissions/' + id).update(updated);
+await updateDoc(doc(db, "submissions", id), updated);
+
     }
 
     function deleteSubmission(id) {
       if (confirm("Delete this submission?")) {
-        db.ref('users/' + currentUserId + '/submissions/' + id).remove();
-        db.ref('allSubmissions/' + id).remove();
+await deleteDoc(doc(db, "submissions", id));
+
       }
     }
 
