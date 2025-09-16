@@ -109,28 +109,11 @@
 <body>
   <h2>User Dashboard</h2>
   
- <label for="userSelector">Select Your Name:</label>
-  <select id="userSelector">
-    <option value="">-- Choose User --</option>
-    <option value="sam_kaplan">Sam Kaplan</option>
-    <option value="tate_costa">Tate Costa</option>
-    <option value="samuel_phillips">Samuel Phillips</option>
-    <option value="logan_myers">Logan Myers</option>
-    <option value="ryan_van">Ryan Van</option>
-    <option value="connor_micklos">Connor Micklos</option>
-    <option value="vahe_petrosyan">Vahe Petrosyan</option>
-    <option value="preston_ngai">Preston Ngai</option>
-    <option value="dylan_sheppard">Dylan Sheppard</option>
-    <option value="garrett_schooley">Garrett Schooley</option>
-    <option value="brandon_dang">Brandon Dang</option>
-    <option value="ian_sandoval">Ian Sandoval</option>
-    <option value="jax_washburn">Jax Washburn</option>
-    <option value="nathan_whitaker">Nathan Whitaker</option>
-    <option value="matthew_ngyuen">Matthew Ngyuen</option>
-    <option value="hasan_ayudogu">Hasan Ayudogu</option>
-    <option value="gavin_doherty">Gavin Doherty</option>
-    <option value="alex_karadzov">Alex Karadzov</option>
-  </select>
+<label for="userSelector">Select your name:</label>
+<select id="userSelector">
+  <option value="">-- Choose User --</option>
+</select>
+
   
   <div id="userControls" style="display:none; margin-top: 1rem;">
   <div id="userHeader" style="font-size: 1.1rem; color: #0077cc;"></div>
@@ -191,11 +174,28 @@
       appId: "1:203023038950:web:bc5cc0633c129e0cb2fe27",
       measurementId: "G-XPQ7THPEKD"
     };
+    
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 const currentUserId = activeUserId;
 
+import { getDocs, collection } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
+
+async function populateUserSelector() {
+  const userSelector = document.getElementById("userSelector");
+  const snapshot = await getDocs(collection(db, "users"));
+
+  snapshot.forEach(doc => {
+    const data = doc.data();
+    const option = document.createElement("option");
+    option.value = data.userId;
+    option.textContent = data.name;
+    userSelector.appendChild(option);
+  });
+}
+
+    
 const eventColorMap = {
   FX: "#fce4ec",
   PH: "#e3f2fd",
@@ -420,6 +420,35 @@ await deleteDoc(doc(db, "submissions", id));
       }
     }
 
+
+populateUserSelector();
+
+const userSelector = document.getElementById("userSelector");
+const userHeader = document.getElementById("userHeader");
+const userControls = document.getElementById("userControls");
+
+userSelector.addEventListener("change", () => {
+  const selectedUser = userSelector.value;
+  if (selectedUser) {
+    localStorage.setItem("activeUserId", selectedUser);
+    userHeader.textContent = `👤 Viewing data for: ${selectedUser.replace(/_/g, ' ')}`;
+    userControls.style.display = "block";
+    loadUserSubmissions(); // Refresh data
+  } else {
+    localStorage.removeItem("activeUserId");
+    userHeader.textContent = "";
+    userControls.style.display = "none";
+    document.getElementById("breakdownTableBody").innerHTML = "";
+  }
+});
+
+const savedUser = localStorage.getItem("activeUserId");
+if (savedUser) {
+  userSelector.value = savedUser;
+  userHeader.textContent = `👤 Viewing data for: ${savedUser.replace(/_/g, ' ')}`;
+  userControls.style.display = "block";
+  loadUserSubmissions();
+}
 
   </script>
 </body>
