@@ -109,8 +109,32 @@
 <body>
   <h2>User Dashboard</h2>
   
-  <div id="userHeader" style="margin-bottom: 1rem; font-size: 1.1rem; color: #0077cc;">
-  Loading user info...
+ <label for="userSelector">Select Your Name:</label>
+  <select id="userSelector">
+    <option value="">-- Choose User --</option>
+    <option value="sam_kaplan">Sam Kaplan</option>
+    <option value="tate_costa">Tate Costa</option>
+    <option value="samuel_phillips">Samuel Phillips</option>
+    <option value="logan_myers">Logan Myers</option>
+    <option value="ryan_van">Ryan Van</option>
+    <option value="connor_micklos">Connor Micklos</option>
+    <option value="vahe_petrosyan">Vahe Petrosyan</option>
+    <option value="preston_ngai">Preston Ngai</option>
+    <option value="dylan_sheppard">Dylan Sheppard</option>
+    <option value="garrett_schooley">Garrett Schooley</option>
+    <option value="brandon_dang">Brandon Dang</option>
+    <option value="ian_sandoval">Ian Sandoval</option>
+    <option value="jax_washburn">Jax Washburn</option>
+    <option value="nathan_whitaker">Nathan Whitaker</option>
+    <option value="matthew_ngyuen">Matthew Ngyuen</option>
+    <option value="hasan_ayudogu">Hasan Ayudogu</option>
+    <option value="gavin_doherty">Gavin Doherty</option>
+    <option value="alex_karadzov">Alex Karadzov</option>
+  </select>
+  
+  <div id="userControls" style="display:none; margin-top: 1rem;">
+  <div id="userHeader" style="font-size: 1.1rem; color: #0077cc;"></div>
+  <a href="editRoutines.html" class="back-button">Edit Routines</a>
 </div>
 
 
@@ -182,15 +206,7 @@ const eventColorMap = {
 };
 
 
-const activeUserId = localStorage.getItem("activeUserId");
-if (!activeUserId) {
-  alert("No user selected. Please return to the homepage and choose your name.");
-  window.location.href = "index.html";
-}
-const currentUserId = activeUserId;
- document.getElementById("userHeader").textContent = `👤 Viewing data for: ${currentUserId.replace(/_/g, ' ')}`;
 
-loadUserSubmissions();
 
 
 import { collection, getDocs } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
@@ -334,7 +350,9 @@ const snapshot = await getDocs(collection(db, "submissions"));
 snapshot.forEach(docSnap => {
   const data = docSnap.data();
   const key = docSnap.id;
-  if (data.userId !== currentUserId) return;
+  const currentUserId = localStorage.getItem("activeUserId");
+if (data.userId !== currentUserId) return;
+
 
 
       let valid = true;
