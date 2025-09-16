@@ -170,7 +170,7 @@
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-    let currentUserId = null;
+const currentUserId = activeUserId;
 
 const eventColorMap = {
   FX: "#fce4ec",
