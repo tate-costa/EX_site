@@ -113,6 +113,10 @@
 <select id="userSelector">
   <option value="">-- Choose User --</option>
 </select>
+  <h3>Add New User</h3>
+<input id="newUserName" placeholder="Full Name (e.g. Tate Mikayla)" />
+<button onclick="addNewUser()">Add User</button>
+
 
   
   <div id="userControls" style="display:none; margin-top: 1rem;">
@@ -449,6 +453,30 @@ if (savedUser) {
   userControls.style.display = "block";
   loadUserSubmissions();
 }
+    async function addNewUser() {
+  const name = document.getElementById("newUserName").value.trim();
+  if (!name) {
+    alert("Please enter a name.");
+    return;
+  }
+
+  // Generate userId from name: lowercase, underscores, no special chars
+  const userId = name.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
+
+  try {
+    await setDoc(doc(db, "users", userId), {
+      name,
+      userId
+    });
+    alert(`✅ User "${name}" added!`);
+    document.getElementById("newUserName").value = "";
+    populateUserSelector(); // Refresh dropdown
+  } catch (error) {
+    console.error("Error adding user:", error);
+    alert("Failed to add user. Check console for details.");
+  }
+}
+
 
   </script>
 </body>
